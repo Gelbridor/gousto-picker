@@ -27,39 +27,47 @@ def _get(url):
         return json.load(r)
 
 
-def fetch_via_api():
-    periods = _get(f"{API}/menu/v1/active-periods")["data"]
-    current = min(periods, key=lambda p: p["offset"])  # offset 0 = the week currently on sale
-    start = datetime.fromisoformat(current["from"])
-    # Gousto delivers a few days after the Tuesday-noon menu rollover; any valid day in the period works.
-    delivery = (start + timedelta(days=4)).date().isoformat()
-    menu = _get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=delivery))
-    return menu
+def _delivery_date(period):
+    # Gousto delivers a few days after the Tuesday-noon rollover; any valid day in the period works.
+    return (datetime.fromisoformat(period["from"]) + timedelta(days=4)).date().isoformat()
 
 
-def fetch_via_playwright():
+def fetch_via_api(weeks=3):
+    periods = sorted(_get(f"{API}/menu/v1/active-periods")["data"], key=lambda p: p["offset"])[:weeks]
+    return [_get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=_delivery_date(p))) for p in periods]
+
+
+def fetch_via_playwright(weeks=3):
+    """Open the real menu page, then call the same feed from inside it for each upcoming week."""
     from playwright.sync_api import sync_playwright
 
-    captured = {}
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         page = browser.new_page()
-
-        def on_response(resp):
-            if "/menu/v3/menus" in resp.url and resp.status == 200 and "menu" not in captured:
-                captured["menu"] = resp.json()
-
-        page.on("response", on_response)
         page.goto("https://www.gousto.co.uk/menu", wait_until="networkidle", timeout=90000)
+        menus = page.evaluate(
+            """async ([api, qs, weeks]) => {
+              const get = async u => (await fetch(u, {headers: {'x-gousto-device-id': crypto.randomUUID()}})).json();
+              const periods = (await get(api + '/menu/v1/active-periods')).data
+                .sort((a, b) => a.offset - b.offset).slice(0, weeks);
+              const out = [];
+              for (const p of periods) {
+                const d = new Date(new Date(p.from).getTime() + 4 * 864e5).toISOString().slice(0, 10);
+                out.push(await get(api + '/menu/v3/menus?' + qs.replace('{date}', d)));
+              }
+              return out;
+            }""",
+            [API, MENU_QS, weeks],
+        )
         browser.close()
-    if "menu" not in captured:
-        raise RuntimeError("Playwright did not observe the menu feed")
-    return captured["menu"]
+    if not menus:
+        raise RuntimeError("Playwright did not get any menus")
+    return menus
 
 
-def fetch_menu():
+def fetch_menus(weeks=3):
     try:
-        return fetch_via_api(), "api"
+        return fetch_via_api(weeks), "api"
     except Exception as exc:  # noqa: BLE001 - any failure -> try the browser route
         print(f"API fetch failed ({exc}); falling back to Playwright")
-        return fetch_via_playwright(), "playwright"
+        return fetch_via_playwright(weeks), "playwright"
