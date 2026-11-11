@@ -2,65 +2,240 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Gousto Picks</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
 <style>
-:root{--bg:#faf7f2;--card:#fff;--ink:#1f2a24;--mute:#5f6a64;--accent:#2f7d4f;--on-accent:#fff;--line:#e6e0d6}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141815;--card:#1d231f;--ink:#eef2ee;--mute:#9aa59e;--accent:#6fcf97;--on-accent:#10201a;--line:#2c352f;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#141815;--card:#1d231f;--ink:#eef2ee;--mute:#9aa59e;--accent:#6fcf97;--on-accent:#10201a;--line:#2c352f;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif;padding:0 max(16px,env(safe-area-inset-left,0px)) 40px max(16px,env(safe-area-inset-left,0px));max-width:720px;margin:auto}
-h1{font-size:1.4rem;margin:20px 0 2px}.sub{color:var(--mute);font-size:.85rem;margin-bottom:14px}
-details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:14px}
-summary{cursor:pointer;font-weight:600}
-label{display:grid;grid-template-columns:90px 1fr 36px;align-items:center;gap:8px;margin-top:8px;font-size:.9rem}
-input[type=range]{width:100%;accent-color:var(--accent)}
-.card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
-.card img{width:110px;object-fit:cover;flex:none}.body{padding:10px 12px 10px 0;min-width:0}
-.rank{color:var(--accent);font-weight:700}.name{font-weight:600}
-.meta{display:flex;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--mute);margin:4px 0}
-.why{font-size:.88rem}.score{float:right;color:var(--accent);font-weight:700;padding:8px 12px 0 0}
-.tabs{display:flex;gap:8px;margin-bottom:10px}.tabs button{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-weight:600}
-.tabs button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.tog{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:.9rem}.tog label{display:flex;gap:6px;align-items:center;margin:0;grid-template-columns:none}
-.tag{font-size:.72rem;border:1px solid var(--accent);color:var(--accent);border-radius:99px;padding:0 7px;margin-left:4px}
+/* Layout: one narrow column. Tabs switch between the ranked picks and the preference dials. */
+:root{
+  --bg:#f3f6f6; --surface:#ffffff; --ink:#14232b; --mute:#58696f; --line:#d9e2e3;
+  --accent:#0f766e; --on-accent:#ffffff; --accent-soft:#d8efec;
+  --warn:#b45309; --warn-soft:#fdecd2;
+  --font-body:'Inter',system-ui,sans-serif; --font-head:'Space Grotesk','Inter',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1719; --surface:#16232a; --ink:#e7f0f1; --mute:#93a7ac; --line:#26373e;
+  --accent:#4fd1c5; --on-accent:#062a27; --accent-soft:#173b3b; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1719; --surface:#16232a; --ink:#e7f0f1; --mute:#93a7ac; --line:#26373e;
+  --accent:#4fd1c5; --on-accent:#062a27; --accent-soft:#173b3b; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--font-body);
+  padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font:700 1.5rem/1.15 var(--font-head);margin:0;text-wrap:balance}
+h2{font:700 1rem var(--font-head);margin:0}
+.sub{color:var(--mute);font-size:.85rem;margin:4px 0 0}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--line);padding:4px;border-radius:12px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs button{border:0;background:transparent;padding:9px;border-radius:9px;font-weight:600;color:var(--mute)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink)}
+.weekpick{display:flex;gap:10px;align-items:center;font-size:.88rem;color:var(--mute)}.weekpick select{flex:1;min-width:0}
+.row{display:flex;gap:16px;flex-wrap:wrap;font-size:.88rem}
+.row label{display:flex;gap:7px;align-items:center}
+input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.name{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.rank{color:var(--accent);font:700 1rem var(--font-head);margin-right:6px}
+.score{font:700 1.05rem var(--font-head);color:var(--accent);font-variant-numeric:tabular-nums}
+.meta{display:flex;gap:6px 14px;flex-wrap:wrap;color:var(--mute);font-size:.84rem;font-variant-numeric:tabular-nums}
+.why{font-size:.86rem}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:.72rem;border-radius:99px;padding:1px 8px;background:var(--accent-soft);color:var(--ink)}
+.chip.warn{background:var(--warn-soft)}
+.panel{display:flex;flex-direction:column;gap:12px}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.group p{margin:0;color:var(--mute);font-size:.84rem}
+.dial{display:grid;grid-template-columns:minmax(80px,110px) 1fr 34px;gap:10px;align-items:center;font-size:.9rem}
+.dial output{text-align:right;font-variant-numeric:tabular-nums;color:var(--mute)}
+input[type=range]{width:100%;accent-color:var(--accent);min-width:0}
+.limits{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.limits label{display:flex;flex-direction:column;gap:4px;font-size:.84rem;color:var(--mute)}
+select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.aff{display:flex;flex-direction:column;gap:5px}
+.aff .lab{display:flex;justify-content:space-between;font-size:.88rem}
+.aff .lab span:last-child{color:var(--mute);font-size:.78rem}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 2px;font-size:.74rem;color:var(--mute)}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.seg button.neg[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:#1b1206}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--mute)}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px}
+@media (max-width:420px){.dial{grid-template-columns:78px 1fr 30px}}
+.card.has-img{flex-direction:row;padding:0;overflow:hidden;gap:0}
+.card.has-img img{width:104px;object-fit:cover;flex:none}
+.card.has-img .inner{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+a.card{color:inherit;text-decoration:none}
 </style>
 </head>
 <body>
-<h1>🍽️ Gousto top picks</h1>
-<div class="sub" id="sub">Loading…</div>
-<div class="tog"><label>Week <select id="week"></select></label></div>
-<div class="tabs"><button id="t-top" class="on">Top picks</button><button id="t-all">Full menu</button></div>
-<div class="tog"><label><input type="checkbox" id="vegan"> Include vegan</label><label><input type="checkbox" id="premium"> Include premium (extra cost)</label></div>
-<details><summary>Tweak what matters</summary>
-<div id="sliders"></div></details>
-<div id="list"></div>
+<div class="wrap">
+  <header>
+    <h1>Gousto Picks</h1>
+    <p class="sub" id="sub">Loading this week's menu…</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-picks" aria-selected="true">Picks</button>
+    <button role="tab" id="tab-prefs" aria-selected="false">Preferences</button>
+  </div>
+
+  <section id="picks" class="panel">
+    <label class="weekpick">Week <select id="week"></select></label>
+    <div class="row">
+      <label><input type="checkbox" id="vegan"> Include vegan</label>
+      <label><input type="checkbox" id="premium"> Include premium (extra cost)</label>
+      <label><input type="checkbox" id="whole"> Show whole menu</label>
+    </div>
+    <div id="list" class="panel"></div>
+  </section>
+
+  <section id="prefs" class="panel" hidden>
+    <div class="group">
+      <h2>What matters</h2>
+      <p>Drag up for more weight. Scores are recalculated instantly.</p>
+      <div id="dials" class="panel"></div>
+    </div>
+    <div class="group">
+      <h2>Limits</h2>
+      <div class="limits">
+        <label>Longest cook time<select id="maxTime"></select></label>
+        <label>Most calories<select id="maxKcal"></select></label>
+      </div>
+    </div>
+    <div class="group">
+      <h2>Main ingredient</h2>
+      <p>Never hides the recipe. Less and More nudge it down or up. Love gives it a big boost.</p>
+      <div id="proteins" class="panel"></div>
+    </div>
+    <div class="group">
+      <h2>Cuisine</h2>
+      <p>Cuisines are guessed from recipe names, so a few will be off.</p>
+      <div id="cuisines" class="panel"></div>
+    </div>
+    <div class="foot"><span id="saved">Not saved yet</span><button class="ghost" id="reset">Reset all</button></div>
+  </section>
+</div>
+
 <script>
-const KEYS={rating:"Rating",protein:"Protein",calories:"Light",time:"Quick"};
-let data,w={},view="top",wk=0;
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function why(i){const t={rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`,protein:`${i.protein_g}g protein for ${i.calories} kcal`,calories:`light at ${i.calories} kcal`,time:`ready in ${i.cook_time} min`};
- const top=Object.keys(w).sort((a,b)=>i.components[b]*w[b]-i.components[a]*w[a]).slice(0,3).filter(k=>i.components[k]>=.5&&w[k]>0&&!(k==="calories"&&i.calories>600));
- const s=top.map(k=>t[k]).join("; ");return s?s[0].toUpperCase()+s.slice(1):"Balanced all-rounder"}
-function render(){
- const wp=data.weeks[wk],fm=x=>new Date(x).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
- document.getElementById("sub").textContent=`Menu ${fm(wp.period.when_start)}–${fm(wp.period.when_cutoff)} · ${wp.all.length} recipes on the menu · updated ${fm(data.generated_at)}`;
- const sum=Object.values(w).reduce((a,b)=>a+b,0)||1;
- const v=document.getElementById("vegan").checked,pr=document.getElementById("premium").checked;
- let items=data.weeks[wk].all.filter(i=>(v||!i.vegan)&&(pr||!i.premium)).map(i=>({...i,s:Object.keys(w).reduce((a,k)=>a+w[k]*i.components[k],0)/sum*100})).sort((a,b)=>b.s-a.s);
- if(view==="top")items=items.slice(0,data.config.top_n);
- document.getElementById("list").innerHTML=items.map((i,n)=>`<a class="card" style="text-decoration:none;color:inherit" href="${i.url}" target="_blank" rel="noopener">
- ${i.image?`<img src="${esc(i.image)}" alt="" loading="lazy">`:""}<div class="body"><span class="score">${i.s.toFixed(1)}</span>
- <div><span class="rank">#${n+1}</span> <span class="name">${esc(i.name)}</span>${i.vegan?'<span class="tag">vegan</span>':""}${i.premium?`<span class="tag">+£${i.surcharge_pp.toFixed(2)}/portion</span>`:""}</div>
- <div class="meta"><span>⏱ ${i.cook_time} min</span><span>🔥 ${i.calories} kcal</span><span>💪 ${i.protein_g}g</span><span>⭐ ${i.rating}</span></div>
- <div class="why">${esc(why(i))}</div></div></a>`).join("")}
-fetch("data/shortlist.json").then(r=>r.json()).then(d=>{data=d;if(!d.weeks)d.weeks=[{period:d.period,all:d.all,counts:d.counts}];w={...d.config.weights};
- const p=d.period,f=x=>new Date(x).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
- document.getElementById("sliders").innerHTML=Object.keys(KEYS).map(k=>`<label>${KEYS[k]}<input type="range" min="0" max="100" value="${w[k]*100}" data-k="${k}"><span>${Math.round(w[k]*100)}</span></label>`).join("");
- document.querySelectorAll("input[type=range]").forEach(el=>el.oninput=()=>{w[el.dataset.k]=el.value/100;el.nextElementSibling.textContent=el.value;render()});
- const wsel=document.getElementById("week");wsel.innerHTML=d.weeks.map((x,i)=>`<option value="${i}">${i?"":"This week · "}${f(x.period.when_start)} to ${f(x.period.when_cutoff)}</option>`).join("");wsel.onchange=()=>{wk=+wsel.value;render()};
- ["vegan","premium"].forEach(id=>document.getElementById(id).onchange=render);
- [["top","t-top"],["all","t-all"]].forEach(([k,id])=>document.getElementById(id).onclick=()=>{view=k;document.getElementById("t-top").classList.toggle("on",k==="top");document.getElementById("t-all").classList.toggle("on",k==="all");render()});
- render()}).catch(e=>document.getElementById("sub").textContent="Couldn't load data: "+e);
+const DIALS = [["rating","Rating"],["protein","Protein"],["calories","Light"],["time","Quick"],["veg","Veg (5-a-day)"]];
+const LEVELS = [[-2,"Never","neg"],[-1,"Less","neg"],[0,"OK",""],[1,"More",""],[2,"Love",""]];
+const BONUS = {"-1":-10,"0":0,"1":8,"2":16};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let wk = 0, data = null, prefs = null;
+
+function defaults() {
+  const w = data.config.weights;
+  return { v: 1, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {} };
+}
+function merge(saved) {
+  const d = defaults();
+  if (!saved || typeof saved !== "object") return d;
+  return { v: 1, w: { ...d.w, ...(saved.w||{}) }, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
+           protein: saved.protein||{}, cuisine: saved.cuisine||{} };
+}
+
+function score(i) {
+  const w = prefs.w, parts = { ...i.components, veg: Math.min((i.five_a_day||0)/5, 1) };
+  const total = Object.values(w).reduce((a,b)=>a+b,0);
+  const base = total ? DIALS.reduce((a,[k]) => a + w[k]*parts[k], 0) / total * 100 : 50;
+  const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0;
+  const hidden = pl === -2 || cl === -2;
+  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0);
+  return { s: base + adj, parts, pl, cl, hidden };
+}
+
+function why(i, r) {
+  const t = { rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`, protein:`${i.protein_g}g protein for ${i.calories} kcal`,
+              calories:`${i.calories} kcal`, time:`ready in ${i.cook_time} min`, veg:`${i.five_a_day} of your 5-a-day` };
+  const keys = DIALS.map(d=>d[0]).filter(k => prefs.w[k] > 0 && r.parts[k] >= .5 && !(k==="calories" && i.calories > 600) && !(k==="veg" && !i.five_a_day))
+    .sort((a,b) => r.parts[b]*prefs.w[b] - r.parts[a]*prefs.w[a]).slice(0,3);
+  return keys.length ? keys.map(k=>t[k]).join("; ").replace(/^./, c=>c.toUpperCase()) : "Balanced all-rounder";
+}
+
+function renderPicks() {
+  if (!data) return;
+  const v = $("vegan").checked, p = $("premium").checked, whole = $("whole").checked;
+  let n = 0;
+  let items = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium)).map(i => ({ i, r: score(i) }))
+    .filter(({i, r}) => !r.hidden && (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal))
+    .sort((a,b) => b.r.s - a.r.s);
+  n = items.length;
+  if (!whole) items = items.slice(0, data.config.top_n);
+  $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
+    const chips = [];
+    if (r.pl > 0) chips.push(`<span class="chip">${r.pl>1?"Love":"More"}: ${esc(i.main)}</span>`);
+    if (r.cl > 0) chips.push(`<span class="chip">${r.cl>1?"Love":"More"}: ${esc(i.style)}</span>`);
+    if (r.pl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.main)}</span>`);
+    if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
+    if (i.vegan) chips.push('<span class="chip">vegan</span>');
+    if (i.premium) chips.push(`<span class="chip warn">+£${i.surcharge_pp.toFixed(2)}/portion</span>`);
+    const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span>${esc(i.name)}</div><div class="score">${r.s.toFixed(0)}</div></div>
+      <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)}</span></div>
+      <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}`;
+    return i.image ? `<a class="card has-img" href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.image)}" alt="" loading="lazy"><div class="inner">${body}</div></a>` : `<article class="card">${body}</article>`;
+  }).join("") : '<div class="card">Nothing matches. Loosen a limit or set fewer recipes to Never.</div>';
+  $("sub").textContent = `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
+}
+const fmt = x => new Date(x).toLocaleDateString("en-GB", { day:"numeric", month:"short" });
+
+function seg(group, name, count) {
+  const cur = prefs[group][name] || 0;
+  return `<div class="aff"><div class="lab"><span>${esc(name)}</span><span>${count} recipes</span></div>
+    <div class="seg" data-g="${group}" data-n="${esc(name)}">${LEVELS.map(([val,lab,cls]) =>
+      `<button class="${cls}" data-v="${val}" aria-pressed="${cur===val}">${lab}</button>`).join("")}</div></div>`;
+}
+function renderPrefs() {
+  $("dials").innerHTML = DIALS.map(([k,l]) => `<div class="dial"><label for="d-${k}">${l}</label>
+    <input type="range" id="d-${k}" min="0" max="100" step="5" value="${prefs.w[k]}" data-k="${k}"><output>${Math.round(prefs.w[k])}</output></div>`).join("");
+  const counts = (key) => { const c = {}; data.weeks[wk].all.forEach(i => c[i[key]] = (c[i[key]]||0)+1); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
+  $("proteins").innerHTML = counts("main").map(([n,c]) => seg("protein", n, c)).join("");
+  $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
+  $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
+  $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
+}
+
+function changed() {
+  renderPicks();
+  try { localStorage.setItem("gousto-prefs", JSON.stringify(prefs)); } catch (e) {}
+  $("saved").textContent = "Saved on this device";
+}
+
+function wire() {
+  $("dials").addEventListener("input", e => { const k = e.target.dataset.k; if (!k) return; prefs.w[k] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value; changed(); });
+  document.querySelectorAll("#proteins,#cuisines").forEach(el => el.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const s = b.parentElement; const val = +b.dataset.v;
+    if (val) prefs[s.dataset.g][s.dataset.n] = val; else delete prefs[s.dataset.g][s.dataset.n];
+    s.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v === val)));
+    changed();
+  }));
+  $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
+  $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
+  ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
+  $("reset").onclick = () => { prefs = defaults(); renderPrefs(); changed(); };
+  [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {
+    $(a).setAttribute("aria-selected","true"); $(b).setAttribute("aria-selected","false"); $(pa).hidden = false; $(pb).hidden = true; });
+}
+
+async function start() {
+  const res = await fetch("data/shortlist.json");
+  data = await res.json();
+  if (!data.weeks) data.weeks = [{ period: data.period, all: data.all }];
+  $("week").innerHTML = data.weeks.map((w, i) => `<option value="${i}">${i ? "" : "This week · "}${fmt(w.period.when_start)} to ${fmt(w.period.when_cutoff)}</option>`).join("");
+  $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
+  let local = null;
+  try { local = JSON.parse(localStorage.getItem("gousto-prefs")); } catch (e) {}
+  prefs = merge(local);
+  renderPrefs(); wire(); renderPicks();
+  $("saved").textContent = "Saved on this device";
+}
+start().catch(e => { $("sub").textContent = "Could not load the menu data: " + e.message; });
 </script>
 </body>
 </html>
