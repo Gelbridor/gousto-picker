@@ -16,12 +16,7 @@ def _norm(value, lo, hi, invert=False):
     return 1 - x if invert else x
 
 
-def eligible(r):
-    claims = {c["slug"] for c in r.get("dietary_claims") or []}
-    if "vegan" in claims:
-        return False
-    if r.get("surcharge"):  # premium / extra-cost recipe
-        return False
+def usable(r):
     return bool(r.get("is_available", True)) and bool(r.get("nutritional_information"))
 
 
@@ -41,6 +36,9 @@ def simplify(r):
         "rating": rating.get("average"),
         "rating_count": rating.get("count") or 0,
         "diet": sorted(c["slug"] for c in r.get("dietary_claims") or []),
+        "vegan": any(c["slug"] == "vegan" for c in r.get("dietary_claims") or []),
+        "premium": bool(r.get("surcharge")),  # extra-cost recipe
+        "surcharge_pp": ((r.get("surcharge") or {}).get("price_per_portion") or 0) / 100,
         "cuisine": (r.get("food_brand") or {}).get("name"),
         "image": img,
         "url": "https://www.gousto.co.uk/menu",
@@ -52,7 +50,7 @@ def rank(recipes, cfg):
     prior_mean, prior_n = cfg["rating_prior_mean"], cfg["rating_prior_count"]
     seen, items = set(), []
     for r in recipes:
-        if not eligible(r) or r["name"] in seen:
+        if not usable(r) or r["name"] in seen:
             continue
         seen.add(r["name"])
         items.append(simplify(r))
@@ -91,4 +89,4 @@ def explain(it, parts, w):
         "time": f"ready in {it['cook_time']} min",
     }
     top = sorted(parts, key=lambda k: parts[k] * w[k], reverse=True)[:3]
-    return "; ".join(text[k] for k in top if parts[k] >= 0.5).capitalize() or "Balanced all-rounder"
+    return "; ".join(text[k] for k in top if parts[k] >= 0.5 and not (k == "calories" and it["calories"] > 600)).capitalize() or "Balanced all-rounder"
