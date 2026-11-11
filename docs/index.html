@@ -28,6 +28,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 <body>
 <h1>🍽️ Gousto top picks</h1>
 <div class="sub" id="sub">Loading…</div>
+<div class="tog"><label>Week <select id="week"></select></label></div>
 <div class="tabs"><button id="t-top" class="on">Top picks</button><button id="t-all">Full menu</button></div>
 <div class="tog"><label><input type="checkbox" id="vegan"> Include vegan</label><label><input type="checkbox" id="premium"> Include premium (extra cost)</label></div>
 <details><summary>Tweak what matters</summary>
@@ -35,26 +36,28 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 <div id="list"></div>
 <script>
 const KEYS={rating:"Rating",protein:"Protein",calories:"Light",time:"Quick"};
-let data,w={},view="top";
+let data,w={},view="top",wk=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function why(i){const t={rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`,protein:`${i.protein_g}g protein for ${i.calories} kcal`,calories:`light at ${i.calories} kcal`,time:`ready in ${i.cook_time} min`};
  const top=Object.keys(w).sort((a,b)=>i.components[b]*w[b]-i.components[a]*w[a]).slice(0,3).filter(k=>i.components[k]>=.5&&w[k]>0&&!(k==="calories"&&i.calories>600));
  const s=top.map(k=>t[k]).join("; ");return s?s[0].toUpperCase()+s.slice(1):"Balanced all-rounder"}
 function render(){
+ const wp=data.weeks[wk],fm=x=>new Date(x).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+ document.getElementById("sub").textContent=`Menu ${fm(wp.period.when_start)}–${fm(wp.period.when_cutoff)} · ${wp.all.length} recipes on the menu · updated ${fm(data.generated_at)}`;
  const sum=Object.values(w).reduce((a,b)=>a+b,0)||1;
  const v=document.getElementById("vegan").checked,pr=document.getElementById("premium").checked;
- let items=data.all.filter(i=>(v||!i.vegan)&&(pr||!i.premium)).map(i=>({...i,s:Object.keys(w).reduce((a,k)=>a+w[k]*i.components[k],0)/sum*100})).sort((a,b)=>b.s-a.s);
+ let items=data.weeks[wk].all.filter(i=>(v||!i.vegan)&&(pr||!i.premium)).map(i=>({...i,s:Object.keys(w).reduce((a,k)=>a+w[k]*i.components[k],0)/sum*100})).sort((a,b)=>b.s-a.s);
  if(view==="top")items=items.slice(0,data.config.top_n);
  document.getElementById("list").innerHTML=items.map((i,n)=>`<a class="card" style="text-decoration:none;color:inherit" href="${i.url}" target="_blank" rel="noopener">
  ${i.image?`<img src="${esc(i.image)}" alt="" loading="lazy">`:""}<div class="body"><span class="score">${i.s.toFixed(1)}</span>
  <div><span class="rank">#${n+1}</span> <span class="name">${esc(i.name)}</span>${i.vegan?'<span class="tag">vegan</span>':""}${i.premium?`<span class="tag">+£${i.surcharge_pp.toFixed(2)}/portion</span>`:""}</div>
  <div class="meta"><span>⏱ ${i.cook_time} min</span><span>🔥 ${i.calories} kcal</span><span>💪 ${i.protein_g}g</span><span>⭐ ${i.rating}</span></div>
  <div class="why">${esc(why(i))}</div></div></a>`).join("")}
-fetch("data/shortlist.json").then(r=>r.json()).then(d=>{data=d;w={...d.config.weights};
+fetch("data/shortlist.json").then(r=>r.json()).then(d=>{data=d;if(!d.weeks)d.weeks=[{period:d.period,all:d.all,counts:d.counts}];w={...d.config.weights};
  const p=d.period,f=x=>new Date(x).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
- document.getElementById("sub").textContent=`Menu ${f(p.when_start)}–${f(p.when_cutoff)} · ${d.counts.feed} recipes on the menu · updated ${f(d.generated_at)}`;
  document.getElementById("sliders").innerHTML=Object.keys(KEYS).map(k=>`<label>${KEYS[k]}<input type="range" min="0" max="100" value="${w[k]*100}" data-k="${k}"><span>${Math.round(w[k]*100)}</span></label>`).join("");
  document.querySelectorAll("input[type=range]").forEach(el=>el.oninput=()=>{w[el.dataset.k]=el.value/100;el.nextElementSibling.textContent=el.value;render()});
+ const wsel=document.getElementById("week");wsel.innerHTML=d.weeks.map((x,i)=>`<option value="${i}">${i?"":"This week · "}${f(x.period.when_start)} to ${f(x.period.when_cutoff)}</option>`).join("");wsel.onchange=()=>{wk=+wsel.value;render()};
  ["vegan","premium"].forEach(id=>document.getElementById(id).onchange=render);
  [["top","t-top"],["all","t-all"]].forEach(([k,id])=>document.getElementById(id).onclick=()=>{view=k;document.getElementById("t-top").classList.toggle("on",k==="top");document.getElementById("t-all").classList.toggle("on",k==="all");render()});
  render()}).catch(e=>document.getElementById("sub").textContent="Couldn't load data: "+e);

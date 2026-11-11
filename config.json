@@ -1,5 +1,6 @@
 {
   "top_n": 8,
+  "weeks": 3,
   "weights": { "rating": 0.5, "protein": 0.2, "calories": 0.15, "time": 0.15 },
   "rating_prior_mean": 4.2,
   "rating_prior_count": 200
