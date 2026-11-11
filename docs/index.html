@@ -366,7 +366,7 @@ function savePrefs() {
     setStatus("Saving…"); clearTimeout(saveTimer); syncBusy = true;
     saveTimer = setTimeout(async () => {
       try { await rpc("gp_save_prefs", { p_code: cfg.c, p_prefs: prefs }); setStatus("Synced"); }
-      catch (e) { setStatus("Could not reach your database. Changes are kept on this device."); }
+      catch (e) { setStatus(explain(e)); }
       syncBusy = false;
     }, 600);
     return;
@@ -384,7 +384,7 @@ async function saveVotes() {
   if (cfg && cfg.n) {
     syncBusy = true;
     try { await rpc("gp_save_votes", { p_code: cfg.c, p_who: cfg.n, p_votes: myVotes() }); setStatus("Synced"); }
-    catch (e) { setStatus("Could not reach your database. Votes are kept on this device."); }
+    catch (e) { setStatus(explain(e)); }
     syncBusy = false; return;
   }
   if (!shared) return;
@@ -420,7 +420,8 @@ function wire() {
     try { const m = $("syncLink").value.match(/sync=([^&\s]+)/); const o = unb64(m ? m[1] : $("syncLink").value.trim());
       if (!o.u || !o.k || !o.c) throw 0; connect({ u: o.u, k: o.k, c: o.c }); } catch (err) { setStatus("That link does not look right."); } };
   $("syncForm").onsubmit = e => { e.preventDefault();
-    const u = $("sbUrl").value.trim(), k = $("sbKey").value.trim();
+    let u = $("sbUrl").value.trim(); const k = $("sbKey").value.trim().replace(/^["']|["']$/g, "");
+    try { u = new URL(u).origin; } catch (err) {}
     if (!/^https?:\/\//.test(u) || k.length < 20) { setStatus("Enter the project URL and the anon public key."); return; }
     const c = Array.from(crypto.getRandomValues(new Uint8Array(24)), x => x.toString(16).padStart(2, "0")).join("");
     connect({ u, k, c }); };
@@ -444,7 +445,7 @@ async function rpc(fn, args) {
   const r = await fetch(cfg.u.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, { method: "POST",
     headers: { apikey: cfg.k, ...(cfg.k.startsWith("eyJ") ? { Authorization: "Bearer " + cfg.k } : {}), "Content-Type": "application/json" },
     body: JSON.stringify(args) });   // new sb_publishable_ keys go in apikey only; legacy anon keys are JWTs and also go in Authorization
-  if (!r.ok) throw new Error(fn + " " + r.status);
+  if (!r.ok) { let m = ""; try { const j = await r.json(); m = j.message || j.hint || j.error || ""; } catch (e) {} throw new Error(`${r.status} ${m}`.trim()); }
   return r.status === 204 ? null : r.json().catch(() => null);
 }
 const syncLink = () => location.origin + location.pathname + "#sync=" + b64({ u: cfg.u, k: cfg.k, c: cfg.c });
@@ -462,7 +463,15 @@ async function pull(first) {
     }
     voteSets = { ...remoteVotes }; if (!voteSets[me]) voteSets[me] = {};
     calcVoteBonus(); syncOk = true; setStatus("Synced"); renderPicks(); renderPrefs();
-  } catch (e) { syncOk = false; setStatus("Could not reach your database. Using this device until it can."); }
+  } catch (e) { syncOk = false; setStatus(explain(e)); }
+}
+function explain(e) { const t = explainText(e); const el = $("syncText"); if (el) el.textContent = t; return t; }
+function explainText(e) {
+  const m = String(e && e.message || e);
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Could not reach the database address. Check the Project URL (https://xxxx.supabase.co) and your connection.";
+  if (/^404|PGRST202|find the function/i.test(m)) return "Reached Supabase, but the setup functions are missing. Run supabase/setup.sql in the SQL Editor. (" + m + ")";
+  if (/^401|^403|permission denied|Invalid API key/i.test(m)) return "Supabase refused the key or the permissions. Check you used the Publishable key and re-run setup.sql. (" + m + ")";
+  return "Database error: " + m;
 }
 function startSync(first) {
   if (!cfg || !cfg.n) return;

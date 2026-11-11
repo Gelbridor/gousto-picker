@@ -41,3 +41,6 @@ end $$;
 
 revoke all on function public.gp_get(text), public.gp_save_prefs(text, jsonb), public.gp_save_votes(text, text, jsonb) from public;
 grant execute on function public.gp_get(text), public.gp_save_prefs(text, jsonb), public.gp_save_votes(text, text, jsonb) to anon, authenticated;
+
+-- Make the new functions visible to the Data API straight away.
+notify pgrst, 'reload schema';
