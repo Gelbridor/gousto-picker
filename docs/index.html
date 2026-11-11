@@ -112,6 +112,8 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
 .stack input,.addrow input{font:inherit}
 .stack input{min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .ok{color:var(--accent);font-weight:700}
+.searchrow input{width:100%;font:inherit;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.searchrow input::placeholder{color:var(--mute)}
 </style>
 </head>
 <body>
@@ -128,6 +130,7 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
 
   <section id="picks" class="panel">
     <label class="weekpick">Week <select id="week"></select></label>
+    <div class="searchrow"><input type="search" id="search" placeholder="Search recipes, ingredients, cuisines" autocomplete="off" autocapitalize="none" aria-label="Search the menu"></div>
     <div class="row">
       <label><input type="checkbox" id="vegan"> Include vegan</label>
       <label><input type="checkbox" id="premium"> Include premium (extra cost)</label>
@@ -290,11 +293,18 @@ const fmt = x => new Date(x).toLocaleDateString("en-GB", { day:"numeric", month:
 function renderPicks() {
   if (!data) return;
   const v = $("vegan").checked, p = $("premium").checked, whole = $("whole").checked;
-  let items = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium)).map(i => ({ i, r: score(i) }))
+  const q = $("search").value.trim().toLowerCase(), terms = q ? q.split(/\s+/) : [];
+  const matches = i => !terms.length || (() => {
+    const hay = [i.name, i.main, i.style, i.dish, ...(ingredientsOf(i) || [])].join(" | ").toLowerCase();
+    return terms.every(t => hay.includes(t));
+  })();
+  let items = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium) && matches(i)).map(i => ({ i, r: score(i) }))
     .filter(({i, r}) => !r.hidden && (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal))
     .sort((a,b) => b.r.s - a.r.s);
   const n = items.length;
-  if (!whole) items = items.slice(0, data.config.top_n);
+  const off = terms.length ? data.weeks[wk].all.filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
+  const offNote = off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "";
+  if (!whole && !terms.length) items = items.slice(0, data.config.top_n);
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
     const chips = [];
     if (r.pl > 0) chips.push(`<span class="chip ${r.pl>1?"hi":""}">${r.pl>1?"Love":"More"}: ${esc(i.main)}</span>`);
@@ -318,8 +328,8 @@ function renderPicks() {
       <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
     const cls = r.ve.pts < 0 ? " down" : "";
     return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy" onerror="this.remove()"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
-  }).join("") : '<div class="card">Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never.</div>';
-  $("sub").textContent = `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
+  }).join("") : `<div class="card">${terms.length ? `No recipes match "${esc(q)}".${esc(offNote)} Your avoided ingredients and limits also apply.` : "Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never."}</div>`;
+  $("sub").textContent = terms.length ? `${n} recipes match "${q}" · ranked for you.${offNote}` : `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
 }
 
 function seg(group, name, count) {
@@ -432,6 +442,7 @@ function wire() {
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
+  $("search").oninput = renderPicks;
   $("reset").onclick = () => { prefs = defaults(); renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {
     $(a).setAttribute("aria-selected","true"); $(b).setAttribute("aria-selected","false"); $(pa).hidden = false; $(pb).hidden = true; });
