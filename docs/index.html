@@ -108,6 +108,10 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
 .pill{font:inherit;font-size:.82rem;font-weight:700;border:0;border-radius:99px;padding:5px 12px;background:var(--slate);color:var(--surface)}
 .pill.add{background:transparent;border:1px dashed var(--line);color:var(--mute);font-weight:600}
 .hint{color:var(--mute);font-size:.84rem}
+.stack{display:flex;flex-direction:column;gap:8px}
+.stack input,.addrow input{font:inherit}
+.stack input{min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.ok{color:var(--accent);font-weight:700}
 </style>
 </head>
 <body>
@@ -133,6 +137,30 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
   </section>
 
   <section id="prefs" class="panel" hidden>
+    <div class="group" id="syncBox">
+      <h2>Sync between devices</h2>
+      <p id="syncText"></p>
+      <div id="syncSetup" class="stack">
+        <input id="sbName" placeholder="Your name (e.g. Tom)" autocomplete="off" aria-label="Your name">
+        <form id="linkForm" class="stack">
+          <input id="syncLink" placeholder="Paste a sync link from your other device" autocomplete="off" aria-label="Sync link">
+          <button class="ghost" type="submit">Connect with link</button>
+        </form>
+        <details id="firstDevice"><summary>First device: connect my own database</summary>
+          <form id="syncForm" class="stack">
+            <p>Create a free Supabase project, run <code>supabase/setup.sql</code> from the repo in its SQL editor, then paste the Project URL and the anon public key (Project Settings, API).</p>
+            <input id="sbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off" aria-label="Supabase project URL">
+            <input id="sbKey" placeholder="anon public key" autocomplete="off" aria-label="Supabase anon key">
+            <button class="ghost" type="submit">Connect and create link</button>
+          </form>
+        </details>
+      </div>
+      <div id="syncOn" class="stack" hidden>
+        <p>Open this link once on your other phone or PC. It contains the secret code, so only share it with your household.</p>
+        <input id="syncOut" readonly aria-label="Sync link to share">
+        <div class="btnrow"><button class="ghost" id="copyLink">Copy link</button><button class="ghost" id="syncNow">Sync now</button><button class="ghost" id="syncOff">Disconnect</button></div>
+      </div>
+    </div>
     <div class="group">
       <h2>What matters</h2>
       <p>Drag up for more weight. Scores are recalculated instantly.</p>
@@ -194,6 +222,7 @@ let me = "local";                 // this viewer's key in voteSets
 let voteSets = { local: {} };     // everyone's votes: { who: { recipeName: {v, main, style, dish} } }
 let voteBonus = { main: {}, style: {}, dish: {} };
 let db = null, shared = false, saveTimer = null;
+let cfg = null, syncBusy = false, syncPoll = null, syncOk = false;   // cfg = { u: url, k: anon key, c: code, n: my name }
 
 /* ---------- votes ---------- */
 const myVotes = () => voteSets[me] || (voteSets[me] = {});
@@ -203,10 +232,11 @@ function calcVoteBonus() {   // every thumb nudges that recipe's tags by 3 point
     if (x[d]) voteBonus[d][x[d]] = Math.max(-10, Math.min(10, (voteBonus[d][x[d]] || 0) + 3 * x.v));
   })));
 }
+const whoLabel = who => (/^u_/.test(who) || who === "local") ? "someone else" : who;
 function voteEffect(name) {   // thumbs up +20, down -40, summed over everyone who voted
-  let pts = 0, others = 0;
-  Object.entries(voteSets).forEach(([who, set]) => { const x = set[name]; if (!x) return; pts += x.v > 0 ? 20 : -40; if (who !== me) others += x.v; });
-  return { pts, mine: (myVotes()[name] || {}).v || 0, others };
+  let pts = 0; const up = [], down = [];
+  Object.entries(voteSets).forEach(([who, set]) => { const x = set[name]; if (!x) return; pts += x.v > 0 ? 20 : -40; if (who !== me) (x.v > 0 ? up : down).push(whoLabel(who)); });
+  return { pts, mine: (myVotes()[name] || {}).v || 0, up, down };
 }
 
 /* ---------- ingredients to avoid ---------- */
@@ -275,8 +305,8 @@ function renderPicks() {
     if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
     if (r.ve.mine > 0) chips.push('<span class="chip hi">You liked this</span>');
     if (r.ve.mine < 0) chips.push('<span class="chip warn">You disliked this</span>');
-    if (r.ve.others > 0) chips.push('<span class="chip hi">Liked by someone else</span>');
-    if (r.ve.others < 0) chips.push('<span class="chip warn">Disliked by someone else</span>');
+    if (r.ve.up.length) chips.push(`<span class="chip hi">Liked by ${esc(r.ve.up.join(", "))}</span>`);
+    if (r.ve.down.length) chips.push(`<span class="chip warn">Disliked by ${esc(r.ve.down.join(", "))}</span>`);
     if (r.lb >= 8) chips.push('<span class="chip hi">Like your usual picks</span>');
     else if (r.lb <= -10) chips.push('<span class="chip warn">Unlike your usual picks</span>');
     if (prefs.avoid.length && !ingredientsOf(i)) chips.push('<span class="chip warn">Ingredients not checked</span>');
@@ -322,7 +352,7 @@ function renderPrefs() {
   const count = set => { const v = Object.values(set); const up = v.filter(x => x.v > 0).length; return [up, v.length - up]; };
   const [mu, md] = count(myVotes());
   const others = Object.entries(voteSets).filter(([w]) => w !== me).reduce((a, [, s]) => { const [u, d] = count(s); return [a[0] + u, a[1] + d]; }, [0, 0]);
-  $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + (shared ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " Each thumb moves that recipe and nudges its tags, so similar recipes move too.";
+  $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + ((shared || cfg) ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " Each thumb moves that recipe and nudges its tags, so similar recipes move too.";
   $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked. You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
@@ -332,6 +362,15 @@ function renderPrefs() {
 function setStatus(t) { $("saved").textContent = t; }
 function savePrefs() {
   try { localStorage.setItem("gousto-prefs", JSON.stringify(prefs)); } catch (e) {}
+  if (cfg && cfg.n) {
+    setStatus("Saving…"); clearTimeout(saveTimer); syncBusy = true;
+    saveTimer = setTimeout(async () => {
+      try { await rpc("gp_save_prefs", { p_code: cfg.c, p_prefs: prefs }); setStatus("Synced"); }
+      catch (e) { setStatus("Could not reach your database. Changes are kept on this device."); }
+      syncBusy = false;
+    }, 600);
+    return;
+  }
   if (!shared) { setStatus("Saved on this device"); return; }
   setStatus("Saving…"); clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
@@ -342,6 +381,12 @@ function savePrefs() {
 async function saveVotes() {
   calcVoteBonus();
   try { localStorage.setItem("gousto-votes", JSON.stringify(myVotes())); } catch (e) {}
+  if (cfg && cfg.n) {
+    syncBusy = true;
+    try { await rpc("gp_save_votes", { p_code: cfg.c, p_who: cfg.n, p_votes: myVotes() }); setStatus("Synced"); }
+    catch (e) { setStatus("Could not reach your database. Votes are kept on this device."); }
+    syncBusy = false; return;
+  }
   if (!shared) return;
   try { await db.doc("votes/" + me).set({ votes: myVotes() }); } catch (e) { setStatus("Could not save your vote to the shared store."); }
 }
@@ -371,6 +416,17 @@ function wire() {
     if (a) addAvoid(a.dataset.add);
     if (r) { prefs.avoid = prefs.avoid.filter(t => t !== r.dataset.remove); renderAvoid(); changed(); }
   });
+  $("linkForm").onsubmit = e => { e.preventDefault();
+    try { const m = $("syncLink").value.match(/sync=([^&\s]+)/); const o = unb64(m ? m[1] : $("syncLink").value.trim());
+      if (!o.u || !o.k || !o.c) throw 0; connect({ u: o.u, k: o.k, c: o.c }); } catch (err) { setStatus("That link does not look right."); } };
+  $("syncForm").onsubmit = e => { e.preventDefault();
+    const u = $("sbUrl").value.trim(), k = $("sbKey").value.trim();
+    if (!/^https?:\/\//.test(u) || k.length < 20) { setStatus("Enter the project URL and the anon public key."); return; }
+    const c = Array.from(crypto.getRandomValues(new Uint8Array(24)), x => x.toString(16).padStart(2, "0")).join("");
+    connect({ u, k, c }); };
+  $("copyLink").onclick = () => { $("syncOut").select(); try { navigator.clipboard.writeText($("syncOut").value).then(() => setStatus("Link copied"), () => {}); } catch (e) {} };
+  $("syncNow").onclick = () => pull(false);
+  $("syncOff").onclick = () => { const mine = voteSets[me] || {}; cfg = null; clearInterval(syncPoll); saveCfg(); me = "local"; voteSets = { local: mine }; renderSync(); setStatus("Saved on this device"); };
   $("learn").oninput = e => { prefs.learn = +e.target.value; e.target.nextElementSibling.textContent = prefs.learn + "%"; renderPrefs(); changed(); };
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
@@ -378,6 +434,59 @@ function wire() {
   $("reset").onclick = () => { prefs = defaults(); renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {
     $(a).setAttribute("aria-selected","true"); $(b).setAttribute("aria-selected","false"); $(pa).hidden = false; $(pb).hidden = true; });
+}
+
+/* ---------- sync through your own Supabase database ---------- */
+const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64 = t => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, "+").replace(/_/g, "/")))));
+function saveCfg() { try { cfg ? localStorage.setItem("gousto-sync", JSON.stringify(cfg)) : localStorage.removeItem("gousto-sync"); } catch (e) {} }
+async function rpc(fn, args) {
+  const r = await fetch(cfg.u.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, { method: "POST",
+    headers: { apikey: cfg.k, Authorization: "Bearer " + cfg.k, "Content-Type": "application/json" }, body: JSON.stringify(args) });
+  if (!r.ok) throw new Error(fn + " " + r.status);
+  return r.status === 204 ? null : r.json().catch(() => null);
+}
+const syncLink = () => location.origin + location.pathname + "#sync=" + b64({ u: cfg.u, k: cfg.k, c: cfg.c });
+async function pull(first) {
+  if (!cfg || !cfg.n || syncBusy) return;
+  try {
+    const st = (await rpc("gp_get", { p_code: cfg.c })) || {};
+    const remotePrefs = st.prefs && Object.keys(st.prefs).length ? st.prefs : null;
+    const remoteVotes = st.votes || {};
+    if (first && !remotePrefs) { await rpc("gp_save_prefs", { p_code: cfg.c, p_prefs: prefs }); }
+    else if (remotePrefs) { const next = merge(remotePrefs); if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; renderPrefs(); } }
+    const mineLocal = voteSets[me] && Object.keys(voteSets[me]).length ? voteSets[me] : (voteSets.local || {});
+    if (first && !(remoteVotes[cfg.n] && Object.keys(remoteVotes[cfg.n]).length) && Object.keys(mineLocal).length) {
+      await rpc("gp_save_votes", { p_code: cfg.c, p_who: cfg.n, p_votes: mineLocal }); remoteVotes[cfg.n] = mineLocal;
+    }
+    voteSets = { ...remoteVotes }; if (!voteSets[me]) voteSets[me] = {};
+    calcVoteBonus(); syncOk = true; setStatus("Synced"); renderPicks(); renderPrefs();
+  } catch (e) { syncOk = false; setStatus("Could not reach your database. Using this device until it can."); }
+}
+function startSync(first) {
+  if (!cfg || !cfg.n) return;
+  me = cfg.n; if (!voteSets[me]) voteSets[me] = voteSets.local || {};
+  clearInterval(syncPoll); pull(first);
+  syncPoll = setInterval(() => pull(false), 20000);
+}
+function renderSync() {
+  const on = !!(cfg && cfg.c), named = on && cfg.n;
+  $("syncBox").hidden = shared;
+  $("syncSetup").hidden = !!named; $("syncOn").hidden = !named;
+  $("sbName").value = $("sbName").value || (cfg && cfg.n) || "";
+  $("syncText").textContent = named ? "Connected. Preferences and votes sync between every device using your link, so your PC and your wife's phone see the same settings."
+    : on ? "Almost there: enter your name, then connect." : "Save preferences and votes in your own database so every device shares them. Your name labels your votes.";
+  if (named) $("syncOut").value = syncLink();
+}
+function connect(next) {
+  const name = $("sbName").value.trim().slice(0, 40);
+  if (!name) { setStatus("Enter your name first."); $("sbName").focus(); return; }
+  cfg = { ...next, n: name }; saveCfg(); renderSync(); startSync(true);
+}
+function readHash() {
+  const m = location.hash.match(/sync=([^&]+)/); if (!m) return;
+  try { const o = unb64(m[1]); if (o.u && o.k && o.c) { cfg = { u: o.u, k: o.k, c: o.c, n: (cfg && cfg.n) || "" }; saveCfg(); } } catch (e) {}
+  history.replaceState(null, "", location.pathname + location.search);
 }
 
 /* ---------- shared storage (only exists when the page runs as a shared Claude artifact) ---------- */
@@ -417,10 +526,16 @@ async function start() {
   $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
   let local = null;
   try { local = JSON.parse(localStorage.getItem("gousto-prefs")); voteSets.local = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) {}
-  prefs = merge(local); calcVoteBonus();
+  prefs = merge(local);
+  try { cfg = JSON.parse(localStorage.getItem("gousto-sync")); } catch (e) {}
+  readHash();
+  calcVoteBonus();
   renderPrefs(); wire(); renderPicks();
   setStatus("Saved on this device");
-  connectShared();
+  renderSync();
+  if (cfg && cfg.n) startSync(false);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pull(false); });
+  connectShared().then(renderSync);
 }
 start().catch(e => { $("sub").textContent = "Could not load the menu data: " + e.message; });
 </script>
