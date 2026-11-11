@@ -243,6 +243,7 @@ function voteEffect(name) {   // thumbs up +20, down -40, summed over everyone w
 }
 
 /* ---------- ingredients to avoid ---------- */
+const recipeUrl = i => (ing && ing.slugs && ing.slugs[i.id]) ? "https://www.gousto.co.uk/cookbook/recipes/" + ing.slugs[i.id] : i.url;
 function ingredientsOf(i) { const idx = ing && ing.recipes[i.id]; return idx ? idx.map(n => ing.names[n]) : null; }
 function avoidHit(i) {
   if (!prefs.avoid.length) return null;
@@ -322,7 +323,7 @@ function renderPicks() {
     if (prefs.avoid.length && !ingredientsOf(i)) chips.push('<span class="chip warn">Ingredients not checked</span>');
     if (i.vegan) chips.push('<span class="chip">vegan</span>');
     if (i.premium) chips.push(`<span class="chip warn">+£${i.surcharge_pp.toFixed(2)}/portion</span>`);
-    const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.name)}</a></div><div class="score">${r.s.toFixed(0)}</div></div>
+    const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span><a href="${esc(recipeUrl(i))}" target="_blank" rel="noopener">${esc(i.name)}</a></div><div class="score">${r.s.toFixed(0)}</div></div>
       <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
       <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}
       <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button></div>`;

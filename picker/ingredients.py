@@ -44,12 +44,12 @@ def _one(item):
         if r:
             entry = r["data"]["entry"]
             names = {(i.get("name") or i.get("label") or "").strip().lower() for i in entry.get("ingredients", [])}
-            return recipe_id, sorted(n for n in names if n)
-    return recipe_id, None
+            return recipe_id, sorted(n for n in names if n), s
+    return recipe_id, None, None
 
 
 def fetch_ingredients(recipes):
-    """recipes: iterable of {id, name}. Returns {id: [ingredient names]} for those found."""
+    """recipes: iterable of {id, name}. Returns {id: {"n": [ingredient names], "s": cookbook slug}} for those found."""
     try:
         slugs = id_to_slug()
     except Exception as exc:  # noqa: BLE001
@@ -58,4 +58,4 @@ def fetch_ingredients(recipes):
     todo = {r["id"]: (r["id"], r["name"], slugs.get(r["id"])) for r in recipes}
     with ThreadPoolExecutor(WORKERS) as ex:
         results = list(ex.map(_one, todo.values()))
-    return {rid: names for rid, names in results if names}
+    return {rid: {"n": names, "s": slug} for rid, names, slug in results if names}
