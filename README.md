@@ -13,7 +13,7 @@ The page can save preferences and votes to your own free Supabase database so ev
 
 1. Create a project at supabase.com (free tier).
 2. SQL Editor > New query > paste `supabase/setup.sql` > Run.
-3. Project Settings > API: copy the Project URL and the `anon` public key.
+3. Project Settings > API: copy the Project URL and the Publishable key (never the secret key).
 4. Open the site > Preferences > Sync between devices. Enter your name, open "First device", paste the URL and key, then Connect.
 5. Copy the sync link shown and open it once on your PC and your wife's phone, entering their name there.
 
