@@ -26,7 +26,7 @@ def simplify(r):
     n = r["nutritional_information"]["per_portion"]
     img = next((c["url"] for i in r.get("images", []) for c in i["crops"] if c["width"] == 400), None)
     rating = r.get("rating") or {}
-    protein_tag, cuisine_tag = tag(r["name"])
+    protein_tag, cuisine_tag, dish_tag = tag(r["name"])
     return {
         "id": r["id"],
         "name": r["name"],
@@ -45,6 +45,7 @@ def simplify(r):
         "cuisine": (r.get("food_brand") or {}).get("name"),
         "main": protein_tag,
         "style": cuisine_tag,
+        "dish": dish_tag,
         "image": img,
         "url": "https://www.gousto.co.uk/menu",
     }

@@ -1,0 +1,11 @@
+{
+  "note": "Recipes chosen each week (names only). Add new weeks to the top; the weekly build learns taste from this file.",
+  "picks": [
+    {"week": "2026-11-23", "recipes": ["Honey & Mustard Glazed Sausage Baguette", "Beef Bourguignon With Mash", "Sticky Chilli Chicken Thigh With Salt & Pepper Chips", "Korean-Style Yang-Nyum Fried Chicken Thigh"]},
+    {"week": "2026-11-16", "recipes": ["Halloumi Souvlaki-Style Sandwich With Tzatziki", "Chicken Teesside Parmo With Garlic Mayo, Chips And Salad", "Cheesy Chipotle Chicken Enchiladas", "Crispy Roast Chicken Thigh With Caramelised Lemon & Dates", "Chorizo & Spinach Conchiglie Pasta Bake"]},
+    {"week": "2026-11-09", "recipes": ["Southern Fried Chicken Thigh With Creamy Slaw, Chips & Gravy", "Beef Bourguignon With Creamy Mash", "Flaked Salmon Tart With Crispy Potatoes", "Henderson's Tomato Soup With Cheesy Pinwheels", "Beef Spaghetti Bolognese"]},
+    {"week": "2026-11-02", "recipes": ["Sticky Beef Satay Wraps", "Sticky Honey Mustard Glazed Hot Dog W. Caramelised Onions & Chips", "Stove-Top Thyme-Crusted Roast Chicken With Onion Gravy", "Lean Beef Lasagne With Balsamic Salad", "Creamy Red Pesto, Crispy Bacon & Broccoli Tortiglioni"]},
+    {"week": "2026-10-26", "recipes": ["Welsh Rarebit Beef Burger With Mustard Mayo & Pickles", "Minted Pea Soup With Cheese & Bacon Toastie", "Herby Breaded Salmon 'N' Chips With Lemon Mayo", "Lamb Doner With Chilli Sauce And Chips", "Tomato & Goats' Cheese Gnocchi"]},
+    {"week": "2026-10-19", "recipes": ["Smoky Scotch Bonnet Mac 'N' Cheese With Red Pepper Slaw", "Beef Meatball Subs With Roasted Pepper Salad", "Venetian-Style Chicken Scaloppine With Crispy Potatoes", "Beef & Mushroom Pie With Garlicky Greens", "Caramelised Onion Beef Burger With Chipotle Mayo"]}
+  ]
+}

@@ -4,7 +4,7 @@ PROTEINS = [  # first match wins, so more specific words come first
     ("Seafood", ["prawn", "shrimp", "scallop", "mussel", "squid", "crab"]),
     ("Fish", ["salmon", "basa", "cod", "sea bass", "haddock", "tuna", "fish", "trout", "mackerel", "cullen skink", "pollock", "fishcake"]),
     ("Chicken", ["chicken"]),
-    ("Beef", ["beef", "steak", "brisket", "burger", "meatball"]),
+    ("Beef", ["beef", "steak", "brisket", "burger"]),
     ("Pork", ["pork", "sausage", "bacon", "chorizo", "gammon", "ham ", "pancetta", "nduja", "carbonara", "prosciutto", "amatriciana"]),
     ("Lamb", ["lamb"]),
     ("Duck & game", ["duck", "venison"]),
@@ -32,6 +32,19 @@ def _match(rules, text, default):
     return default
 
 
+DISHES = [  # first match wins
+    ("Soup & salad", ["soup", "salad", "poke", "minestrone"]),
+    ("Wraps, tacos & kebabs", ["wrap", "taco", "burrito", "fajita", "enchilada", "quesadilla", "doner", "kebab", "shawarma", "gyro", "pitta", "flatbread", "naan bread"]),
+    ("Burgers & sandwiches", ["burger", " sub", "sandwich", "baguette", "hot dog", "toastie", "sarnie", "bun ", "pinwheel", "slider"]),
+    ("Pasta & bakes", ["pasta", "spaghetti", "bolognese", "lasagne", "tortiglioni", "gnocchi", "conchiglie", "linguine", "penne", "orzo", "ravioli", "tagliatelle", " mac ", "bake", "carbonara", "fusilli", "rigatoni", "orecchiette", "risotto", "macaroni"]),
+    ("Pies, stews & roasts", ["pie", "roast", "stew", "bourguignon", "casserole", "hotpot", "cottage", "shepherd", "coq au vin", "tart", "crumble", "wellington", "pot "]),
+    ("Curry & rice", ["curry", "dal", "biryani", "korma", "tikka", "masala", "rice", "tagine", "jambalaya", "chilli con"]),
+    ("Noodles & stir-fry", ["noodle", "stir", "chow mein", "ramen", "udon", "pad thai", "laksa"]),
+    ("Chips & fried", ["chips", "fried", "parmo", "katsu", "battered", "breaded", "southern", "nugget", "fries", "wings"]),
+    ("Traybakes & one-pan", ["tray bake", "traybake", "one-pan", "one pan", "sheet pan"]),
+]
+
+
 def tag(name):
     t = " " + name.lower() + " "
-    return _match(PROTEINS, t, "Other"), _match(CUISINES, t, "Other")
+    return _match(PROTEINS, t, "Other"), _match(CUISINES, t, "Other"), _match(DISHES, t, "Other")

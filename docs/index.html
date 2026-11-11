@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Gousto Picks</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one narrow column. Tabs switch between the ranked picks and the preference dials. */
 :root{
@@ -12,16 +12,16 @@
   --brand:#e8313d; --on-brand:#ffffff; --accent:#5b5cf0; --on-accent:#ffffff; --accent-soft:#e9e9fd;
   --slate:#46566b; --hi:#ffd54a; --on-hi:#2b2200;
   --good:#e8313d; --on-good:#ffffff; --warn:#b4540a; --warn-soft:#fde8d3;
-  --font-body:'Nunito',system-ui,sans-serif; --font-head:'Nunito',system-ui,sans-serif;
+  --font-body:'Figtree',system-ui,sans-serif; --font-head:'Figtree',system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#141a22; --surface:#1e2631; --ink:#eef1f5; --mute:#a3afbd; --line:#2f3a48;
-  --brand:#c42a35; --on-brand:#ffffff; --accent:#8f90ff; --on-accent:#14143a; --accent-soft:#2a2c52;
+  --bg:#1d1e21; --surface:#333d4a; --ink:#eef1f5; --mute:#b4bfcc; --line:#455163;
+  --brand:#d6001c; --on-brand:#ffffff; --accent:#9f9cff; --on-accent:#1b1840; --accent-soft:#44466f;
   --slate:#9fb0c4; --hi:#ffd54a; --on-hi:#2b2200;
   --good:#ff5b66; --on-good:#2a0508; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#141a22; --surface:#1e2631; --ink:#eef1f5; --mute:#a3afbd; --line:#2f3a48;
-  --brand:#c42a35; --on-brand:#ffffff; --accent:#8f90ff; --on-accent:#14143a; --accent-soft:#2a2c52;
+  --bg:#1d1e21; --surface:#333d4a; --ink:#eef1f5; --mute:#b4bfcc; --line:#455163;
+  --brand:#d6001c; --on-brand:#ffffff; --accent:#9f9cff; --on-accent:#1b1840; --accent-soft:#44466f;
   --slate:#9fb0c4; --hi:#ffd54a; --on-hi:#2b2200;
   --good:#ff5b66; --on-good:#2a0508; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}
 *{box-sizing:border-box}
@@ -123,6 +123,11 @@ h2{font-weight:800}
       <div id="dials" class="panel"></div>
     </div>
     <div class="group">
+      <h2>Your history</h2>
+      <p id="histText"></p>
+      <div class="dial"><label for="learn">Use history</label><input type="range" id="learn" min="0" max="200" step="10" value="100"><output>100%</output></div>
+    </div>
+    <div class="group">
       <h2>Limits</h2>
       <div class="limits">
         <label>Longest cook time<select id="maxTime"></select></label>
@@ -138,6 +143,11 @@ h2{font-weight:800}
       <h2>Cuisine</h2>
       <p>Cuisines are guessed from recipe names, so a few will be off.</p>
       <div id="cuisines" class="panel"></div>
+    </div>
+    <div class="group">
+      <h2>Dish type</h2>
+      <p>Guessed from recipe names, like cuisine.</p>
+      <div id="dishes" class="panel"></div>
     </div>
     <div class="foot"><span id="saved">Not saved yet</span><button class="ghost" id="reset">Reset all</button></div>
   </section>
@@ -155,23 +165,26 @@ let wk = 0, data = null, prefs = null;
 function defaults() {
   const w = data.config.weights;
   return { v: 1, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {} };
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, learn: 100 };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
   return { v: 1, w: { ...d.w, ...(saved.w||{}) }, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
-           protein: saved.protein||{}, cuisine: saved.cuisine||{} };
+           protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, learn: saved.learn == null ? 100 : +saved.learn };
 }
 
 function score(i) {
   const w = prefs.w, parts = { ...i.components, veg: Math.min((i.five_a_day||0)/5, 1) };
   const total = Object.values(w).reduce((a,b)=>a+b,0);
   const base = total ? DIALS.reduce((a,[k]) => a + w[k]*parts[k], 0) / total * 100 : 50;
-  const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0;
-  const hidden = pl === -2 || cl === -2;
-  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0);
-  return { s: base + adj, parts, pl, cl, hidden };
+  const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0, dl = prefs.dish[i.dish] || 0;
+  const hidden = pl === -2 || cl === -2 || dl === -2;
+  const pb = (data.profile && data.profile.bonus) || {};
+  const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
+  const lb = hist * (prefs.learn / 100);
+  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb;
+  return { s: base + adj, parts, pl, cl, dl, lb, hidden };
 }
 
 function why(i, r) {
@@ -197,10 +210,14 @@ function renderPicks() {
     if (r.cl > 0) chips.push(`<span class="chip ${r.cl>1?"hi":""}">${r.cl>1?"Love":"More"}: ${esc(i.style)}</span>`);
     if (r.pl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.main)}</span>`);
     if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
+    if (r.dl > 0) chips.push(`<span class="chip ${r.dl>1?"hi":""}">${r.dl>1?"Love":"More"}: ${esc(i.dish)}</span>`);
+    if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
+    if (r.lb >= 8) chips.push('<span class="chip hi">Like your usual picks</span>');
+    else if (r.lb <= -10) chips.push('<span class="chip warn">Unlike your usual picks</span>');
     if (i.vegan) chips.push('<span class="chip">vegan</span>');
     if (i.premium) chips.push(`<span class="chip warn">+£${i.surcharge_pp.toFixed(2)}/portion</span>`);
     const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span>${esc(i.name)}</div><div class="score">${r.s.toFixed(0)}</div></div>
-      <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)}</span></div>
+      <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
       <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}`;
     return i.image ? `<a class="card has-img" href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.image)}" alt="" loading="lazy"><div class="inner">${body}</div></a>` : `<article class="card">${body}</article>`;
   }).join("") : '<div class="card">Nothing matches. Loosen a limit or set fewer recipes to Never.</div>';
@@ -220,6 +237,12 @@ function renderPrefs() {
   const counts = (key) => { const c = {}; data.weeks[wk].all.forEach(i => c[i[key]] = (c[i[key]]||0)+1); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
   $("proteins").innerHTML = counts("main").map(([n,c]) => seg("protein", n, c)).join("");
   $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
+  $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
+  $("learn").value = prefs.learn; $("learn").nextElementSibling.textContent = prefs.learn + "%";
+  const P = data.profile || { n: 0, top: [] };
+  const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
+  const likes = P.top.filter(t => t.bonus >= 4).slice(0, 5).map(fmtB), dislikes = P.top.filter(t => t.bonus <= -4).slice(-4).reverse().map(fmtB);
+  $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked. You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
 }
@@ -232,13 +255,14 @@ function changed() {
 
 function wire() {
   $("dials").addEventListener("input", e => { const k = e.target.dataset.k; if (!k) return; prefs.w[k] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value; changed(); });
-  document.querySelectorAll("#proteins,#cuisines").forEach(el => el.addEventListener("click", e => {
+  document.querySelectorAll("#proteins,#cuisines,#dishes").forEach(el => el.addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     const s = b.parentElement; const val = +b.dataset.v;
     if (val) prefs[s.dataset.g][s.dataset.n] = val; else delete prefs[s.dataset.g][s.dataset.n];
     s.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v === val)));
     changed();
   }));
+  $("learn").oninput = e => { prefs.learn = +e.target.value; e.target.nextElementSibling.textContent = prefs.learn + "%"; renderPrefs(); changed(); };
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
