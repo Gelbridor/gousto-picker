@@ -234,7 +234,7 @@ function seg(group, name, count) {
 function renderPrefs() {
   $("dials").innerHTML = DIALS.map(([k,l]) => `<div class="dial"><label for="d-${k}">${l}</label>
     <input type="range" id="d-${k}" min="0" max="100" step="5" value="${prefs.w[k]}" data-k="${k}"><output>${Math.round(prefs.w[k])}</output></div>`).join("");
-  const counts = (key) => { const c = {}; data.weeks[wk].all.forEach(i => c[i[key]] = (c[i[key]]||0)+1); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
+  const counts = (key) => { const c = {}; data.weeks[wk].all.forEach(i => { const v = i[key] || "Other"; c[v] = (c[v]||0)+1; }); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
   $("proteins").innerHTML = counts("main").map(([n,c]) => seg("protein", n, c)).join("");
   $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
   $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
@@ -272,7 +272,7 @@ function wire() {
 }
 
 async function start() {
-  const res = await fetch("data/shortlist.json");
+  const res = await fetch("data/shortlist.json",{cache:"no-cache"});
   data = await res.json();
   if (!data.weeks) data.weeks = [{ period: data.period, all: data.all }];
   $("week").innerHTML = data.weeks.map((w, i) => `<option value="${i}">${i ? "" : "This week · "}${fmt(w.period.when_start)} to ${fmt(w.period.when_cutoff)}</option>`).join("");
