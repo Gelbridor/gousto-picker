@@ -4,24 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Gousto Picks</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <style>
 /* Layout: one narrow column. Tabs switch between the ranked picks and the preference dials. */
 :root{
-  --bg:#f6f2fa; --surface:#ffffff; --ink:#2a1a3f; --mute:#6d5f80; --line:#e3daee;
-  --brand:#4a2377; --on-brand:#ffffff; --accent:#4a2377; --on-accent:#ffffff; --accent-soft:#ece3f7;
-  --good:#17a368; --on-good:#ffffff; --warn:#b4540a; --warn-soft:#fde8d3;
-  --font-body:'DM Sans',system-ui,sans-serif; --font-head:'DM Sans',system-ui,sans-serif;
+  --bg:#f3f4f7; --surface:#ffffff; --ink:#1d2733; --mute:#5c6a7a; --line:#dfe3e9;
+  --brand:#e8313d; --on-brand:#ffffff; --accent:#5b5cf0; --on-accent:#ffffff; --accent-soft:#e9e9fd;
+  --slate:#46566b; --hi:#ffd54a; --on-hi:#2b2200;
+  --good:#e8313d; --on-good:#ffffff; --warn:#b4540a; --warn-soft:#fde8d3;
+  --font-body:'Nunito',system-ui,sans-serif; --font-head:'Nunito',system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#150d22; --surface:#21153a; --ink:#f1eaf9; --mute:#b3a4c9; --line:#37294f;
-  --brand:#33205a; --on-brand:#ffffff; --accent:#c4a3f0; --on-accent:#1c0f33; --accent-soft:#33245a;
-  --good:#3ccf91; --on-good:#06281a; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}}
+  --bg:#141a22; --surface:#1e2631; --ink:#eef1f5; --mute:#a3afbd; --line:#2f3a48;
+  --brand:#c42a35; --on-brand:#ffffff; --accent:#8f90ff; --on-accent:#14143a; --accent-soft:#2a2c52;
+  --slate:#9fb0c4; --hi:#ffd54a; --on-hi:#2b2200;
+  --good:#ff5b66; --on-good:#2a0508; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#150d22; --surface:#21153a; --ink:#f1eaf9; --mute:#b3a4c9; --line:#37294f;
-  --brand:#33205a; --on-brand:#ffffff; --accent:#c4a3f0; --on-accent:#1c0f33; --accent-soft:#33245a;
-  --good:#3ccf91; --on-good:#06281a; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}
+  --bg:#141a22; --surface:#1e2631; --ink:#eef1f5; --mute:#a3afbd; --line:#2f3a48;
+  --brand:#c42a35; --on-brand:#ffffff; --accent:#8f90ff; --on-accent:#14143a; --accent-soft:#2a2c52;
+  --slate:#9fb0c4; --hi:#ffd54a; --on-hi:#2b2200;
+  --good:#ff5b66; --on-good:#2a0508; --warn:#f6b25b; --warn-soft:#3a2a12; color-scheme:dark}
 *{box-sizing:border-box}
+body{margin:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--font-body);
   padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -71,18 +75,23 @@ select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);b
 .card.has-img .inner{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
 a.card{color:inherit;text-decoration:none}
 [hidden]{display:none!important}
-header{background:var(--brand);color:var(--on-brand);border-radius:16px;padding:18px 18px 16px}
-header h1{color:var(--on-brand)}header .sub{color:var(--on-brand);opacity:.8}
-.tabs{background:var(--surface);border:1px solid var(--line);padding:4px}
-.tabs button{border-radius:10px;font-weight:700}
+header{background:var(--brand);color:var(--on-brand);border-radius:0 0 22px 22px;padding:18px 18px 18px;margin:-20px calc(-1 * max(16px,env(safe-area-inset-left,0px))) 0;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+header h1{color:var(--on-brand);font-weight:800;letter-spacing:-.01em}header .sub{color:var(--on-brand);opacity:.9}
+.tabs{background:var(--surface);border:1px solid var(--line);padding:4px;border-radius:14px}
+.tabs button{border-radius:11px;font-weight:800}
 .tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
-.score{background:var(--good);color:var(--on-good);border-radius:99px;min-width:2.4rem;text-align:center;padding:2px 10px;font-size:.95rem}
-.rank{color:var(--accent)}
-.card,.group{border-radius:16px;box-shadow:0 1px 2px rgba(74,35,119,.06)}
-.chip{background:var(--accent-soft)}
-.seg button{border-radius:10px}
-.ghost{border-radius:99px;font-weight:600}
-input[type=checkbox],input[type=range]{accent-color:var(--good)}
+.score{background:var(--good);color:var(--on-good);border-radius:99px;min-width:2.4rem;text-align:center;padding:2px 10px;font-size:.95rem;font-weight:800}
+.rank{color:var(--good);font-weight:800}
+.name{font-weight:800}
+.card,.group{border-radius:18px;box-shadow:0 1px 3px rgba(29,39,51,.08)}
+.chip{background:var(--accent-soft);font-weight:600}
+.chip.hi{background:var(--hi);color:var(--on-hi);font-weight:800}
+.seg button{border-radius:10px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:800}
+.seg button.neg[aria-pressed="true"]{background:var(--slate);border-color:var(--slate);color:var(--surface)}
+.ghost{border-radius:99px;font-weight:700}
+input[type=checkbox],input[type=range]{accent-color:var(--accent)}
+h2{font-weight:800}
 </style>
 </head>
 <body>
@@ -184,8 +193,8 @@ function renderPicks() {
   if (!whole) items = items.slice(0, data.config.top_n);
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
     const chips = [];
-    if (r.pl > 0) chips.push(`<span class="chip">${r.pl>1?"Love":"More"}: ${esc(i.main)}</span>`);
-    if (r.cl > 0) chips.push(`<span class="chip">${r.cl>1?"Love":"More"}: ${esc(i.style)}</span>`);
+    if (r.pl > 0) chips.push(`<span class="chip ${r.pl>1?"hi":""}">${r.pl>1?"Love":"More"}: ${esc(i.main)}</span>`);
+    if (r.cl > 0) chips.push(`<span class="chip ${r.cl>1?"hi":""}">${r.cl>1?"Love":"More"}: ${esc(i.style)}</span>`);
     if (r.pl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.main)}</span>`);
     if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
     if (i.vegan) chips.push('<span class="chip">vegan</span>');
