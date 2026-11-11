@@ -25,15 +25,32 @@ def build_week(menu, cfg, profile, history):
     }
 
 
-def past_menus(history, cfg):
-    """Eligible recipes on the menu each past pick was chosen from, so taste is judged against what was on offer."""
-    out = {}
-    for week in sorted({h["week"] for h in history})[-52:]:
+def past_menus(history, cfg, budget=90):
+    """Eligible recipes on the menu each past pick was chosen from, so taste is judged against what was on offer.
+    Fetched in daemon threads with one overall time limit: a slow or stuck request can't hold up the weekly build,
+    and any week not fetched in time falls back to the current menu mix."""
+    import threading
+    import time
+
+    weeks = sorted({h["week"] for h in history})[-52:]
+    raw = {}
+
+    def get(week):
         try:
-            out[week] = [i for i in menu_items(list(fetch_menu_for(week)["recipes"].values()), cfg) if eligible(i)]
-        except Exception as exc:  # noqa: BLE001 - fall back to the current menu mix for that week
-            print(f"Could not fetch the {week} menu ({exc}); using the current menu mix for those picks")
-    return out
+            raw[week] = fetch_menu_for(week)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Could not fetch the {week} menu ({exc}); using the current menu mix for those picks", flush=True)
+
+    threads = [threading.Thread(target=get, args=(w,), daemon=True) for w in weeks]
+    for t in threads:
+        t.start()
+    deadline = time.monotonic() + budget
+    for t in threads:
+        t.join(max(0, deadline - time.monotonic()))
+    late = [w for w in weeks if w not in raw]
+    if late:
+        print(f"Past menus not available for {', '.join(late)}; using the current menu mix for those picks", flush=True)
+    return {w: [i for i in menu_items(list(m["recipes"].values()), cfg) if eligible(i)] for w, m in dict(raw).items()}
 
 
 def write_ingredients(weeks):
@@ -56,7 +73,9 @@ def write_ingredients(weeks):
 
 def main():
     cfg = load_config()
+    print("Fetching this week's menus", flush=True)
     menus, source = fetch_menus(cfg.get("weeks", 3))
+    print(f"Got {len(menus)} menus via {source}; fetching past menus for your picks", flush=True)
     seen, pool = set(), []
     for m in menus:  # unique non-vegan, non-premium recipes across the weeks = what the menu "offers" now
         for i in menu_items(list(m["recipes"].values()), cfg):
@@ -79,6 +98,7 @@ def main():
         **{k: weeks[0][k] for k in ("period", "counts", "top", "all")},  # current week, for older pages
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    print("Fetching ingredient lists", flush=True)
     try:
         write_ingredients(weeks)
     except Exception as exc:  # noqa: BLE001 - the shortlist still works without ingredient data

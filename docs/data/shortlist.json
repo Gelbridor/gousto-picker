@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-11T22:02:41+00:00",
+ "generated_at": "2026-11-11T22:09:50+00:00",
  "source": "api",
  "config": {
   "top_n": 8,
@@ -25685,7 +25685,7 @@
      "fat_g": 39,
      "five_a_day": 2,
      "rating": 4.42,
-     "rating_count": 4817,
+     "rating_count": 4818,
      "diet": [],
      "vegan": false,
      "premium": false,
@@ -25696,7 +25696,7 @@
      "dish": "Other",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/step-8-3-1720617830430-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.411229818616703,
+     "bayes_rating": 4.4112315663611,
      "components": {
       "rating": 0.807,
       "protein": 0.978,
@@ -25707,7 +25707,7 @@
      "tag_bonus": -1,
      "repeat_bonus": 0.0,
      "final": 69.5,
-     "why": "Rated 4.42/5 by 4,817 cooks; 45g protein"
+     "why": "Rated 4.42/5 by 4,818 cooks; 45g protein"
     },
     {
      "id": "99032948-5c29-4cce-9343-332590867ee3",
