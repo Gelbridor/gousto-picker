@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gousto Picks</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#1f2a24;--mute:#6b756f;--accent:#2f7d4f;--line:#e6e0d6}
+@media (prefers-color-scheme:dark){:root{--bg:#141815;--card:#1d231f;--ink:#eef2ee;--mute:#9aa59e;--accent:#6fcf97;--line:#2c352f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif;padding:0 16px 40px;max-width:720px;margin:auto}
+h1{font-size:1.4rem;margin:20px 0 2px}.sub{color:var(--mute);font-size:.85rem;margin-bottom:14px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+summary{cursor:pointer;font-weight:600}
+label{display:grid;grid-template-columns:90px 1fr 36px;align-items:center;gap:8px;margin-top:8px;font-size:.9rem}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.card img{width:110px;object-fit:cover;flex:none}.body{padding:10px 12px 10px 0;min-width:0}
+.rank{color:var(--accent);font-weight:700}.name{font-weight:600}
+.meta{display:flex;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--mute);margin:4px 0}
+.why{font-size:.88rem}.score{float:right;color:var(--accent);font-weight:700;padding:8px 12px 0 0}
+</style>
+</head>
+<body>
+<h1>🍽️ Gousto top picks</h1>
+<div class="sub" id="sub">Loading…</div>
+<details><summary>Tweak what matters</summary>
+<div id="sliders"></div></details>
+<div id="list"></div>
+<script>
+const KEYS={rating:"Rating",protein:"Protein",calories:"Light",time:"Quick"};
+let data,w={};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function why(i){const t={rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`,protein:`${i.protein_g}g protein for ${i.calories} kcal`,calories:`light at ${i.calories} kcal`,time:`ready in ${i.cook_time} min`};
+ const top=Object.keys(w).sort((a,b)=>i.components[b]*w[b]-i.components[a]*w[a]).slice(0,3).filter(k=>i.components[k]>=.5&&w[k]>0);
+ const s=top.map(k=>t[k]).join("; ");return s?s[0].toUpperCase()+s.slice(1):"Balanced all-rounder"}
+function render(){
+ const sum=Object.values(w).reduce((a,b)=>a+b,0)||1;
+ const items=data.all.map(i=>({...i,s:Object.keys(w).reduce((a,k)=>a+w[k]*i.components[k],0)/sum*100})).sort((a,b)=>b.s-a.s).slice(0,data.config.top_n);
+ document.getElementById("list").innerHTML=items.map((i,n)=>`<a class="card" style="text-decoration:none;color:inherit" href="${i.url}" target="_blank" rel="noopener">
+ ${i.image?`<img src="${esc(i.image)}" alt="" loading="lazy">`:""}<div class="body"><span class="score">${i.s.toFixed(1)}</span>
+ <div><span class="rank">#${n+1}</span> <span class="name">${esc(i.name)}</span></div>
+ <div class="meta"><span>⏱ ${i.cook_time} min</span><span>🔥 ${i.calories} kcal</span><span>💪 ${i.protein_g}g</span><span>⭐ ${i.rating}</span></div>
+ <div class="why">${esc(why(i))}</div></div></a>`).join("")}
+fetch("data/shortlist.json").then(r=>r.json()).then(d=>{data=d;w={...d.config.weights};
+ const p=d.period,f=x=>new Date(x).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+ document.getElementById("sub").textContent=`Menu ${f(p.when_start)}–${f(p.when_cutoff)} · ${d.counts.eligible} of ${d.counts.feed} recipes after removing vegan & premium · updated ${f(d.generated_at)}`;
+ document.getElementById("sliders").innerHTML=Object.keys(KEYS).map(k=>`<label>${KEYS[k]}<input type="range" min="0" max="100" value="${w[k]*100}" data-k="${k}"><span>${Math.round(w[k]*100)}</span></label>`).join("");
+ document.querySelectorAll("input[type=range]").forEach(el=>el.oninput=()=>{w[el.dataset.k]=el.value/100;el.nextElementSibling.textContent=el.value;render()});
+ render()}).catch(e=>document.getElementById("sub").textContent="Couldn't load data: "+e);
+</script>
+</body>
+</html>
