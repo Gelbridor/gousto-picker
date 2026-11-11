@@ -148,9 +148,9 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
         </form>
         <details id="firstDevice"><summary>First device: connect my own database</summary>
           <form id="syncForm" class="stack">
-            <p>Create a free Supabase project, run <code>supabase/setup.sql</code> from the repo in its SQL editor, then paste the Project URL and the anon public key (Project Settings, API).</p>
+            <p>Create a free Supabase project, run <code>supabase/setup.sql</code> from the repo in its SQL editor, then paste the Project URL and the Publishable key (Project Settings, API Keys). Never the secret key.</p>
             <input id="sbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off" aria-label="Supabase project URL">
-            <input id="sbKey" placeholder="anon public key" autocomplete="off" aria-label="Supabase anon key">
+            <input id="sbKey" placeholder="Publishable key (sb_publishable_...)" autocomplete="off" aria-label="Supabase anon key">
             <button class="ghost" type="submit">Connect and create link</button>
           </form>
         </details>
@@ -442,7 +442,8 @@ const unb64 = t => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, "+"
 function saveCfg() { try { cfg ? localStorage.setItem("gousto-sync", JSON.stringify(cfg)) : localStorage.removeItem("gousto-sync"); } catch (e) {} }
 async function rpc(fn, args) {
   const r = await fetch(cfg.u.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, { method: "POST",
-    headers: { apikey: cfg.k, Authorization: "Bearer " + cfg.k, "Content-Type": "application/json" }, body: JSON.stringify(args) });
+    headers: { apikey: cfg.k, ...(cfg.k.startsWith("eyJ") ? { Authorization: "Bearer " + cfg.k } : {}), "Content-Type": "application/json" },
+    body: JSON.stringify(args) });   // new sb_publishable_ keys go in apikey only; legacy anon keys are JWTs and also go in Authorization
   if (!r.ok) throw new Error(fn + " " + r.status);
   return r.status === 204 ? null : r.json().catch(() => null);
 }
