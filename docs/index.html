@@ -114,6 +114,13 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
 .ok{color:var(--accent);font-weight:700}
 .searchrow input{width:100%;font:inherit;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .searchrow input::placeholder{color:var(--mute)}
+.vote .pickbtn{width:auto;padding:0 14px;margin-left:auto;font:inherit;font-size:.82rem;font-weight:700}
+.vote .pickbtn[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:var(--on-good)}
+.picklist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.picklist .pk{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:.86rem}
+.picklist .pk span{min-width:0;overflow-wrap:anywhere}
+.picklist button{flex:none}
+.picklist small{color:var(--mute);display:block}
 </style>
 </head>
 <body>
@@ -173,6 +180,7 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
       <h2>Your history</h2>
       <p id="histText"></p>
       <p id="votesText"></p>
+      <details id="picksBox"><summary>Picks entered on this site (<span id="pickCount">0</span>)</summary><div id="pickList" class="picklist"></div></details>
             <div class="btnrow"><button class="ghost" id="clearVotes">Clear my votes</button></div>
       <div class="dial"><label for="learn">Use history</label><input type="range" id="learn" min="0" max="200" step="10" value="100"><output>100%</output></div>
     </div>
@@ -242,6 +250,33 @@ function voteEffect(name) {   // thumbs up +20, down -40, summed over everyone w
   return { pts, mine: (myVotes()[name] || {}).v || 0, up, down };
 }
 
+/* ---------- learning from picks ---------- */
+const DIMS = ["main", "style", "dish"];
+let profile = { n: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] };
+function computeProfile() {   // same maths as picker/profile.py: how much more often you pick a tag than the menu offers it
+  const base = data.profile || { n: 0, picked: {} }, user = (prefs && prefs.picks) || [];
+  const n = base.n + user.length;
+  if (!n) { profile = { n: 0, base: base.n, user: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] }; return; }
+  const seen = new Set(), pool = [];
+  data.weeks.forEach(w => w.all.forEach(i => { if (!i.vegan && !i.premium && !seen.has(i.name)) { seen.add(i.name); pool.push(i); } }));
+  const bonus = {}, top = [];
+  DIMS.forEach(d => {
+    const menu = {}; pool.forEach(i => { const v = i[d] || "Other"; menu[v] = (menu[v] || 0) + 1; });
+    const picked = { ...(base.picked && base.picked[d] || {}) };
+    user.forEach(x => { const v = x[d] || "Other"; picked[v] = (picked[v] || 0) + 1; });
+    bonus[d] = {};
+    Object.entries(menu).forEach(([v, c]) => {
+      const share = c / pool.length, p = ((picked[v] || 0) + 20 * share) / (n + 20);
+      const b = Math.max(-16, Math.min(16, Math.round(8 * Math.log2(p / share))));
+      bonus[d][v] = b; if (v !== "Other") top.push({ dim: d, value: v, bonus: b, picked: picked[v] || 0 });
+    });
+  });
+  top.sort((a, b) => b.bonus - a.bonus);
+  profile = { n, base: base.n, user: user.length, bonus, top };
+}
+const weekKey = () => data.weeks[wk].period.when_start.slice(0, 10);
+const isPicked = i => (prefs.picks || []).some(x => x.n === i.name && x.w === weekKey());
+
 /* ---------- ingredients to avoid ---------- */
 const recipeUrl = i => (ing && ing.slugs && ing.slugs[i.id]) ? "https://www.gousto.co.uk/cookbook/recipes/" + ing.slugs[i.id] : i.url;
 function ingredientsOf(i) { const idx = ing && ing.recipes[i.id]; return idx ? idx.map(n => ing.names[n]) : null; }
@@ -255,14 +290,15 @@ function avoidHit(i) {
 function defaults() {
   const w = data.config.weights;
   return { v: 1, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100 };
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [] };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
   return { v: 1, w: { ...d.w, ...(saved.w||{}) }, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
            protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, avoid: Array.isArray(saved.avoid) ? saved.avoid : [],
-           learn: saved.learn == null ? 100 : +saved.learn };
+           learn: saved.learn == null ? 100 : +saved.learn,
+           picks: Array.isArray(saved.picks) ? saved.picks : [] };
 }
 
 function score(i) {
@@ -272,7 +308,7 @@ function score(i) {
   const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0, dl = prefs.dish[i.dish] || 0;
   const avoided = avoidHit(i);
   const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided;
-  const pb = (data.profile && data.profile.bonus) || {};
+  const pb = profile.bonus || {};
   const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
   const vbs = (voteBonus.main[i.main]||0) + (voteBonus.style[i.style]||0) + (voteBonus.dish[i.dish]||0);
   const lb = (hist + vbs) * (prefs.learn / 100);
@@ -314,6 +350,7 @@ function renderPicks() {
     if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
     if (r.dl > 0) chips.push(`<span class="chip ${r.dl>1?"hi":""}">${r.dl>1?"Love":"More"}: ${esc(i.dish)}</span>`);
     if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
+    if (isPicked(i)) chips.push('<span class="chip hi">In your box</span>');
     if (r.ve.mine > 0) chips.push('<span class="chip hi">You liked this</span>');
     if (r.ve.mine < 0) chips.push('<span class="chip warn">You disliked this</span>');
     if (r.ve.up.length) chips.push(`<span class="chip hi">Liked by ${esc(r.ve.up.join(", "))}</span>`);
@@ -326,7 +363,7 @@ function renderPicks() {
     const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span><a href="${esc(recipeUrl(i))}" target="_blank" rel="noopener">${esc(i.name)}</a></div><div class="score">${r.s.toFixed(0)}</div></div>
       <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
       <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}
-      <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
+      <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button><button class="pickbtn" data-pick="${esc(i.name)}" aria-pressed="${isPicked(i)}">${isPicked(i) ? "Picked" : "I'm picking this"}</button></div>`;
     const cls = r.ve.pts < 0 ? " down" : "";
     return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy" onerror="this.remove()"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
   }).join("") : `<div class="card">${terms.length ? `No recipes match "${esc(q)}".${esc(offNote)} Your avoided ingredients and limits also apply.` : "Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never."}</div>`;
@@ -348,6 +385,11 @@ function renderAvoid() {
     : prefs.avoid.length ? `${hit} of this week's ${all.length} recipes are hidden.${unknown ? ` ${unknown} recipes have no ingredient list yet and are only checked by name.` : ""}` : "Matches whole words at the start, so egg also hides eggs and egg noodles.";
 }
 
+function renderPickList() {
+  const list = [...(prefs.picks || [])].map((x, k) => ({ ...x, k })).sort((a, b) => b.w.localeCompare(a.w));
+  $("pickCount").textContent = list.length;
+  $("pickList").innerHTML = list.length ? list.slice(0, 40).map(x => `<div class="pk"><span>${esc(x.n)}<small>Week of ${fmt(x.w)}</small></span><button class="ghost" data-unpick="${x.k}" aria-label="Remove ${esc(x.n)}">Remove</button></div>`).join("") : '<span class="hint">No picks entered here yet. Tap "I\'m picking this" on a recipe.</span>';
+}
 function renderPrefs() {
   $("dials").innerHTML = DIALS.map(([k,l]) => `<div class="dial"><label for="d-${k}">${l}</label>
     <input type="range" id="d-${k}" min="0" max="100" step="5" value="${prefs.w[k]}" data-k="${k}"><output>${Math.round(prefs.w[k])}</output></div>`).join("");
@@ -356,15 +398,16 @@ function renderPrefs() {
   $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
   $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
   renderAvoid();
+  renderPickList();
   $("learn").value = prefs.learn; $("learn").nextElementSibling.textContent = prefs.learn + "%";
-  const P = data.profile || { n: 0, top: [] };
+  const P = profile;
   const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
   const likes = P.top.filter(t => t.bonus >= 4).slice(0, 5).map(fmtB), dislikes = P.top.filter(t => t.bonus <= -4).slice(-4).reverse().map(fmtB);
   const count = set => { const v = Object.values(set); const up = v.filter(x => x.v > 0).length; return [up, v.length - up]; };
   const [mu, md] = count(myVotes());
   const others = Object.entries(voteSets).filter(([w]) => w !== me).reduce((a, [, s]) => { const [u, d] = count(s); return [a[0] + u, a[1] + d]; }, [0, 0]);
   $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + ((shared || cfg) ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " Each thumb moves that recipe and nudges its tags, so similar recipes move too.";
-  $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked. You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
+  $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked (${P.base} from your saved history, ${P.user} entered on this site). You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
 }
@@ -414,11 +457,22 @@ function wire() {
     changed();
   }));
   $("list").addEventListener("click", e => {
+    const pk = e.target.closest("button[data-pick]");
+    if (pk) {
+      const name = pk.dataset.pick, w = weekKey(), had = isPicked({ name });
+      if (had) prefs.picks = prefs.picks.filter(x => !(x.n === name && x.w === w));
+      else { const rec = data.weeks[wk].all.find(x => x.name === name) || {}; prefs.picks.push({ n: name, w, main: rec.main, style: rec.style, dish: rec.dish }); }
+      computeProfile(); renderPicks(); renderPrefs(); savePrefs(); return;
+    }
     const b = e.target.closest("button[data-vote]"); if (!b) return;
     const name = b.dataset.name, dir = b.dataset.vote === "up" ? 1 : -1, mine = myVotes();
     if ((mine[name] || {}).v === dir) delete mine[name];
     else { const rec = data.weeks[wk].all.find(x => x.name === name) || {}; mine[name] = { v: dir, main: rec.main, style: rec.style, dish: rec.dish }; }
     saveVotes(); renderPicks(); renderPrefs();
+  });
+  $("pickList").addEventListener("click", e => {
+    const b = e.target.closest("[data-unpick]"); if (!b) return;
+    prefs.picks.splice(+b.dataset.unpick, 1); computeProfile(); renderPicks(); renderPrefs(); savePrefs();
   });
   $("clearVotes").onclick = () => { voteSets[me] = {}; saveVotes(); renderPicks(); renderPrefs(); };
   $("avoidForm").onsubmit = e => { e.preventDefault(); addAvoid($("avoidInput").value); $("avoidInput").value = ""; };
@@ -444,7 +498,7 @@ function wire() {
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
   $("search").oninput = renderPicks;
-  $("reset").onclick = () => { prefs = defaults(); renderPrefs(); changed(); };
+  $("reset").onclick = () => { const keep = prefs.picks; prefs = defaults(); prefs.picks = keep; renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {
     $(a).setAttribute("aria-selected","true"); $(b).setAttribute("aria-selected","false"); $(pa).hidden = false; $(pb).hidden = true; });
 }
@@ -468,7 +522,7 @@ async function pull(first) {
     const remotePrefs = st.prefs && Object.keys(st.prefs).length ? st.prefs : null;
     const remoteVotes = st.votes || {};
     if (first && !remotePrefs) { await rpc("gp_save_prefs", { p_code: cfg.c, p_prefs: prefs }); }
-    else if (remotePrefs) { const next = merge(remotePrefs); if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; renderPrefs(); } }
+    else if (remotePrefs) { const next = merge(remotePrefs); if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; computeProfile(); renderPrefs(); } }
     const mineLocal = voteSets[me] && Object.keys(voteSets[me]).length ? voteSets[me] : (voteSets.local || {});
     if (first && !(remoteVotes[cfg.n] && Object.keys(remoteVotes[cfg.n]).length) && Object.keys(mineLocal).length) {
       await rpc("gp_save_votes", { p_code: cfg.c, p_who: cfg.n, p_votes: mineLocal }); remoteVotes[cfg.n] = mineLocal;
@@ -526,7 +580,7 @@ async function connectShared() {
       if (snap.metadata.hasPendingWrites) return;
       if (snap.exists) {
         const next = merge(snap.data());
-        if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; renderPrefs(); renderPicks(); }
+        if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; computeProfile(); renderPrefs(); renderPicks(); }
       }
       setStatus("Shared: saved for everyone using this page");
     }, () => setStatus("Could not reach shared storage. Using this device only."));
@@ -548,7 +602,7 @@ async function start() {
   $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
   let local = null;
   try { local = JSON.parse(localStorage.getItem("gousto-prefs")); voteSets.local = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) {}
-  prefs = merge(local);
+  prefs = merge(local); computeProfile();
   try { cfg = JSON.parse(localStorage.getItem("gousto-sync")); } catch (e) {}
   readHash();
   calcVoteBonus();
