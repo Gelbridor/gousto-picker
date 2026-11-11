@@ -92,6 +92,16 @@ header h1{color:var(--on-brand);font-weight:800;letter-spacing:-.01em}header .su
 .ghost{border-radius:99px;font-weight:700}
 input[type=checkbox],input[type=range]{accent-color:var(--accent)}
 h2{font-weight:800}
+.card.down{opacity:.6}
+.name a{color:inherit;text-decoration:none}
+.vote{display:flex;gap:8px;align-items:center}
+.vote button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:34px;border:1px solid var(--line);border-radius:99px;background:transparent;color:var(--mute);padding:0}
+.vote button svg{width:18px;height:18px;fill:currentColor}
+.vote button[data-vote="down"] svg{transform:rotate(180deg)}
+.vote button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.vote button[data-vote="down"][aria-pressed="true"]{background:var(--slate);border-color:var(--slate);color:var(--surface)}
+textarea#voteOut{width:100%;min-height:90px;font:inherit;font-size:.8rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -125,6 +135,9 @@ h2{font-weight:800}
     <div class="group">
       <h2>Your history</h2>
       <p id="histText"></p>
+      <p id="votesText"></p>
+      <div class="btnrow"><button class="ghost" id="copyVotes">Copy my votes</button><button class="ghost" id="clearVotes">Clear votes</button></div>
+      <textarea id="voteOut" readonly hidden></textarea>
       <div class="dial"><label for="learn">Use history</label><input type="range" id="learn" min="0" max="200" step="10" value="100"><output>100%</output></div>
     </div>
     <div class="group">
@@ -160,7 +173,14 @@ const BONUS = {"-1":-10,"0":0,"1":8,"2":16};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-let wk = 0, data = null, prefs = null;
+let wk = 0, data = null, prefs = null, votes = {}, voteBonus = { main: {}, style: {}, dish: {} };
+const THUMB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>';
+function loadVotes() { try { votes = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) { votes = {}; } calcVoteBonus(); }
+function saveVotes() { try { localStorage.setItem("gousto-votes", JSON.stringify(votes)); } catch (e) {} calcVoteBonus(); }
+function calcVoteBonus() {   // every thumb nudges that recipe's tags by 3 points, capped at 10
+  voteBonus = { main: {}, style: {}, dish: {} };
+  Object.values(votes).forEach(x => ["main","style","dish"].forEach(d => { if (x[d]) voteBonus[d][x[d]] = Math.max(-10, Math.min(10, (voteBonus[d][x[d]]||0) + 3 * x.v)); }));
+}
 
 function defaults() {
   const w = data.config.weights;
@@ -182,9 +202,11 @@ function score(i) {
   const hidden = pl === -2 || cl === -2 || dl === -2;
   const pb = (data.profile && data.profile.bonus) || {};
   const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
-  const lb = hist * (prefs.learn / 100);
-  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb;
-  return { s: base + adj, parts, pl, cl, dl, lb, hidden };
+  const vbs = (voteBonus.main[i.main]||0) + (voteBonus.style[i.style]||0) + (voteBonus.dish[i.dish]||0);
+  const lb = (hist + vbs) * (prefs.learn / 100);
+  const rv = (votes[i.name] || {}).v || 0;
+  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + (rv > 0 ? 20 : rv < 0 ? -40 : 0);
+  return { s: base + adj, parts, pl, cl, dl, lb, rv, hidden };
 }
 
 function why(i, r) {
@@ -212,14 +234,18 @@ function renderPicks() {
     if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
     if (r.dl > 0) chips.push(`<span class="chip ${r.dl>1?"hi":""}">${r.dl>1?"Love":"More"}: ${esc(i.dish)}</span>`);
     if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
+    if (r.rv > 0) chips.push('<span class="chip hi">You liked this</span>');
+    if (r.rv < 0) chips.push('<span class="chip warn">You disliked this</span>');
     if (r.lb >= 8) chips.push('<span class="chip hi">Like your usual picks</span>');
     else if (r.lb <= -10) chips.push('<span class="chip warn">Unlike your usual picks</span>');
     if (i.vegan) chips.push('<span class="chip">vegan</span>');
     if (i.premium) chips.push(`<span class="chip warn">+£${i.surcharge_pp.toFixed(2)}/portion</span>`);
-    const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span>${esc(i.name)}</div><div class="score">${r.s.toFixed(0)}</div></div>
+    const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.name)}</a></div><div class="score">${r.s.toFixed(0)}</div></div>
       <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
-      <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}`;
-    return i.image ? `<a class="card has-img" href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.image)}" alt="" loading="lazy"><div class="inner">${body}</div></a>` : `<article class="card">${body}</article>`;
+      <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}
+      <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.rv>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.rv<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
+    const cls = r.rv < 0 ? " down" : "";
+    return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
   }).join("") : '<div class="card">Nothing matches. Loosen a limit or set fewer recipes to Never.</div>';
   $("sub").textContent = `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
 }
@@ -242,6 +268,8 @@ function renderPrefs() {
   const P = data.profile || { n: 0, top: [] };
   const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
   const likes = P.top.filter(t => t.bonus >= 4).slice(0, 5).map(fmtB), dislikes = P.top.filter(t => t.bonus <= -4).slice(-4).reverse().map(fmtB);
+  const vs = Object.values(votes), up = vs.filter(x => x.v > 0).length, dn = vs.length - up;
+  $("votesText").textContent = `Votes on this device: ${up} thumbs up, ${dn} thumbs down. Each thumb nudges that recipe and its tags, so similar recipes move too.`;
   $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked. You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
@@ -262,6 +290,19 @@ function wire() {
     s.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v === val)));
     changed();
   }));
+  $("list").addEventListener("click", e => {
+    const b = e.target.closest("button[data-vote]"); if (!b) return;
+    const name = b.dataset.name, dir = b.dataset.vote === "up" ? 1 : -1;
+    if ((votes[name] || {}).v === dir) delete votes[name];
+    else { const rec = data.weeks[wk].all.find(x => x.name === name) || {}; votes[name] = { v: dir, main: rec.main, style: rec.style, dish: rec.dish }; }
+    saveVotes(); renderPicks(); renderPrefs();
+  });
+  $("clearVotes").onclick = () => { votes = {}; saveVotes(); renderPicks(); renderPrefs(); $("voteOut").hidden = true; };
+  $("copyVotes").onclick = () => {
+    const lines = Object.entries(votes).map(([n, x]) => (x.v > 0 ? "+ " : "- ") + n);
+    const out = $("voteOut"); out.value = lines.join("\n") || "No votes yet"; out.hidden = false; out.select();
+    try { navigator.clipboard.writeText(out.value).catch(() => {}); } catch (e) {}
+  };
   $("learn").oninput = e => { prefs.learn = +e.target.value; e.target.nextElementSibling.textContent = prefs.learn + "%"; renderPrefs(); changed(); };
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
@@ -279,7 +320,7 @@ async function start() {
   $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
   let local = null;
   try { local = JSON.parse(localStorage.getItem("gousto-prefs")); } catch (e) {}
-  prefs = merge(local);
+  prefs = merge(local); loadVotes();
   renderPrefs(); wire(); renderPicks();
   $("saved").textContent = "Saved on this device";
 }

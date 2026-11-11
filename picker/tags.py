@@ -5,7 +5,9 @@ PROTEINS = [  # first match wins, so more specific words come first
     ("Fish", ["salmon", "basa", "cod", "sea bass", "haddock", "tuna", "fish", "trout", "mackerel", "cullen skink", "pollock", "fishcake"]),
     ("Chicken", ["chicken"]),
     ("Beef", ["beef", "steak", "brisket", "burger"]),
-    ("Pork", ["pork", "sausage", "bacon", "chorizo", "gammon", "ham ", "pancetta", "nduja", "carbonara", "prosciutto", "amatriciana"]),
+    ("Sausage & bacon", ["sausage", "bacon", "chorizo", "gammon", "ham ", "pancetta", "nduja", "carbonara", "prosciutto", "amatriciana",
+                          "hot dog", "salami", "pepperoni", "lardons", "bangers", "chipolata", "frankfurter"]),
+    ("Pork", ["pork", "ribs", "belly", "loin", "chop"]),
     ("Lamb", ["lamb"]),
     ("Duck & game", ["duck", "venison"]),
     ("Turkey", ["turkey"]),
@@ -33,7 +35,7 @@ def _match(rules, text, default):
 
 
 DISHES = [  # first match wins
-    ("Soup & salad", ["soup", "salad", "poke", "minestrone"]),
+    ("Soup & salad", ["soup", "minestrone"]),
     ("Wraps, tacos & kebabs", ["wrap", "taco", "burrito", "fajita", "enchilada", "quesadilla", "doner", "kebab", "shawarma", "gyro", "pitta", "flatbread", "naan bread"]),
     ("Burgers & sandwiches", ["burger", " sub", "sandwich", "baguette", "hot dog", "toastie", "sarnie", "bun ", "pinwheel", "slider"]),
     ("Pasta & bakes", ["pasta", "spaghetti", "bolognese", "lasagne", "tortiglioni", "gnocchi", "conchiglie", "linguine", "penne", "orzo", "ravioli", "tagliatelle", " mac ", "bake", "carbonara", "fusilli", "rigatoni", "orecchiette", "risotto", "macaroni"]),
@@ -41,6 +43,7 @@ DISHES = [  # first match wins
     ("Curry & rice", ["curry", "dal", "biryani", "korma", "tikka", "masala", "rice", "tagine", "jambalaya", "chilli con"]),
     ("Noodles & stir-fry", ["noodle", "stir", "chow mein", "ramen", "udon", "pad thai", "laksa"]),
     ("Chips & fried", ["chips", "fried", "parmo", "katsu", "battered", "breaded", "southern", "nugget", "fries", "wings"]),
+    ("Soup & salad", ["salad", "poke"]),  # after chips/fried so "Parmo With Chips And Salad" counts as chips
     ("Traybakes & one-pan", ["tray bake", "traybake", "one-pan", "one pan", "sheet pan"]),
 ]
 
