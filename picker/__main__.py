@@ -31,12 +31,13 @@ def write_ingredients(weeks):
 
     recipes = {i["id"]: {"id": i["id"], "name": i["name"]} for w in weeks for i in w["all"]}
     found = fetch_ingredients(recipes.values())
-    names = sorted({n for v in found.values() for n in v})
+    names = sorted({n for v in found.values() for n in v["n"]})
     index = {n: k for k, n in enumerate(names)}
-    freq = Counter(n for v in found.values() for n in v)
+    freq = Counter(n for v in found.values() for n in v["n"])
     ING_OUT.write_text(json.dumps({
         "names": names,
-        "recipes": {rid: [index[n] for n in v] for rid, v in found.items()},
+        "recipes": {rid: [index[n] for n in v["n"]] for rid, v in found.items()},
+        "slugs": {rid: v["s"] for rid, v in found.items()},   # cookbook page slug: gousto.co.uk/cookbook/recipes/<slug>
         "common": [n for n, c in freq.most_common(250) if c >= 3],
     }, separators=(",", ":")))
     print(f"\nIngredient lists found for {len(found)} of {len(recipes)} recipes")
