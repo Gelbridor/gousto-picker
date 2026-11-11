@@ -1,7 +1,26 @@
 {
   "top_n": 8,
   "weeks": 3,
-  "weights": { "rating": 0.5, "protein": 0.2, "calories": 0.15, "time": 0.15 },
+  "weights": {
+    "rating": 0.6,
+    "protein": 0.2,
+    "calories": 0.0,
+    "time": 0.2
+  },
   "rating_prior_mean": 4.2,
-  "rating_prior_count": 200
+  "rating_prior_count": 200,
+  "learning": {
+    "prior": 20,
+    "scale": 12,
+    "tag_limit": 12,
+    "tag_cap": 20,
+    "repeat_points": 30,
+    "repeat_max": 35,
+    "repeat_half_life_weeks": 26,
+    "similar": 0.6,
+    "vote_up": 10
+  },
+  "variety": {
+    "max_per_main": 2
+  }
 }

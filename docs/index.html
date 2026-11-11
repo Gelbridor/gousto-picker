@@ -142,6 +142,7 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
       <label><input type="checkbox" id="vegan"> Include vegan</label>
       <label><input type="checkbox" id="premium"> Include premium (extra cost)</label>
       <label><input type="checkbox" id="whole"> Show whole menu</label>
+      <label><input type="checkbox" id="variety"> Mix it up (max 2 of each main ingredient in the top 8)</label>
     </div>
     <div id="list" class="panel"></div>
   </section>
@@ -237,42 +238,87 @@ let cfg = null, syncBusy = false, syncPoll = null, syncOk = false;   // cfg = { 
 
 /* ---------- votes ---------- */
 const myVotes = () => voteSets[me] || (voteSets[me] = {});
-function calcVoteBonus() {   // every thumb nudges that recipe's tags by 3 points, capped at 10
+function calcVoteBonus() {   // every thumb nudges that recipe's tags by 3 points, capped at 10 (then capped again with history in score())
   voteBonus = { main: {}, style: {}, dish: {} };
   Object.values(voteSets).forEach(set => Object.values(set).forEach(x => ["main","style","dish"].forEach(d => {
     if (x[d]) voteBonus[d][x[d]] = Math.max(-10, Math.min(10, (voteBonus[d][x[d]] || 0) + 3 * x.v));
   })));
 }
 const whoLabel = who => (/^u_/.test(who) || who === "local") ? "someone else" : who;
-function voteEffect(name) {   // thumbs up +20, down -40, summed over everyone who voted
-  let pts = 0; const up = [], down = [];
-  Object.entries(voteSets).forEach(([who, set]) => { const x = set[name]; if (!x) return; pts += x.v > 0 ? 20 : -40; if (who !== me) (x.v > 0 ? up : down).push(whoLabel(who)); });
-  return { pts, mine: (myVotes()[name] || {}).v || 0, up, down };
+function voteEffect(name) {   // each thumbs up adds a few points; any thumbs down (from anyone) hides the recipe
+  let pts = 0, hide = false; const up = [], down = [];
+  Object.entries(voteSets).forEach(([who, set]) => { const x = set[name]; if (!x) return; if (x.v > 0) pts += L().vote_up; else hide = true; if (who !== me) (x.v > 0 ? up : down).push(whoLabel(who)); });
+  return { pts, hide, mine: (myVotes()[name] || {}).v || 0, up, down };
 }
 
-/* ---------- learning from picks ---------- */
+/* ---------- learning from picks: same maths as picker/profile.py and picker/rank.py ---------- */
 const DIMS = ["main", "style", "dish"];
+const L = () => ({ prior: 20, scale: 8, tag_limit: 12, tag_cap: 20, repeat_points: 30, repeat_max: 35, repeat_half_life_weeks: 26, similar: 0.6, vote_up: 10, ...(data.config.learning || {}) });
 let profile = { n: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] };
-function computeProfile() {   // same maths as picker/profile.py: how much more often you pick a tag than the menu offers it
-  const base = data.profile || { n: 0, picked: {} }, user = (prefs && prefs.picks) || [];
-  const n = base.n + user.length;
-  if (!n) { profile = { n: 0, base: base.n, user: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] }; return; }
+let history = [];   // [{name, week}]: picks.json plus picks entered on this site
+const nameKey = n => String(n).replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+const STOP = new Set(["with","and","the","a","of","in","on","style","n","w","s"]);
+const words = n => new Set(n.toLowerCase().replace(/['\u2019]/g, "").split(/[^a-z0-9]+/).filter(t => t && !STOP.has(t)));
+function similarity(a, b) { const A = words(a), B = words(b); if (!A.size || !B.size) return 0; let n = 0; A.forEach(t => { if (B.has(t)) n++; }); return n / (A.size + B.size - n); }
+const days = (a, b) => Math.round((Date.parse(a.slice(0, 10)) - Date.parse(b.slice(0, 10))) / 864e5);
+function shares(items) {
+  const out = {}; DIMS.forEach(d => { const c = {}; items.forEach(i => { const v = i[d] || "Other"; c[v] = (c[v] || 0) + 1; }); out[d] = {}; Object.entries(c).forEach(([v, n]) => out[d][v] = n / (items.length || 1)); });
+  return out;
+}
+function computeProfile() {   // how much more often you pick a tag than the menu you picked from offered it
+  const base = data.profile || { n: 0 }, lc = L();
+  const fromFile = data.history || [];
+  // site picks already listed in picks.json (same recipe within 10 days) only count once
+  const user = ((prefs && prefs.picks) || []).filter(x => !fromFile.some(h => nameKey(h.name) === nameKey(x.n) && Math.abs(days(h.week, x.w)) <= 10));
+  history = [...fromFile, ...user.map(x => ({ name: x.n, week: x.w }))];
+  const n = (base.n || 0) + user.length;
+  if (!n) { profile = { n: 0, base: 0, user: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] }; return; }
   const seen = new Set(), pool = [];
   data.weeks.forEach(w => w.all.forEach(i => { if (!i.vegan && !i.premium && !seen.has(i.name)) { seen.add(i.name); pool.push(i); } }));
+  const pooled = shares(pool);
+  const weekShares = {}; data.weeks.forEach(w => { weekShares[w.period.when_start.slice(0, 10)] = shares(w.all.filter(i => !i.vegan && !i.premium)); });
   const bonus = {}, top = [];
   DIMS.forEach(d => {
-    const menu = {}; pool.forEach(i => { const v = i[d] || "Other"; menu[v] = (menu[v] || 0) + 1; });
-    const picked = { ...(base.picked && base.picked[d] || {}) };
-    user.forEach(x => { const v = x[d] || "Other"; picked[v] = (picked[v] || 0) + 1; });
+    const obs = { ...((base.obs || base.picked || {})[d] || {}) };
+    const exp = { ...((base.exp || {})[d] || {}) };
+    if (!base.exp) Object.keys(pooled[d]).forEach(v => exp[v] = (base.n || 0) * pooled[d][v]);   // older data files
+    user.forEach(x => {
+      const v = x[d] || "Other", ws = (weekShares[x.w] || pooled)[d];
+      obs[v] = (obs[v] || 0) + 1;
+      Object.keys(pooled[d]).forEach(k => exp[k] = (exp[k] || 0) + (ws[k] || 0));
+    });
     bonus[d] = {};
-    Object.entries(menu).forEach(([v, c]) => {
-      const share = c / pool.length, p = ((picked[v] || 0) + 20 * share) / (n + 20);
-      const b = Math.max(-16, Math.min(16, Math.round(8 * Math.log2(p / share))));
-      bonus[d][v] = b; if (v !== "Other") top.push({ dim: d, value: v, bonus: b, picked: picked[v] || 0 });
+    Object.entries(pooled[d]).forEach(([v, s]) => {
+      const ratio = ((obs[v] || 0) + lc.prior * s) / ((exp[v] || 0) + lc.prior * s);
+      const b = Math.max(-lc.tag_limit, Math.min(lc.tag_limit, Math.round(lc.scale * Math.log2(ratio))));
+      bonus[d][v] = b; if (v !== "Other") top.push({ dim: d, value: v, bonus: b, picked: obs[v] || 0 });
     });
   });
   top.sort((a, b) => b.bonus - a.bonus);
-  profile = { n, base: base.n, user: user.length, bonus, top };
+  profile = { n, base: base.n || 0, user: user.length, bonus, top };
+}
+function repeatBonus(name) {   // recipes you've picked before (or a close variant), fading with a 6-month half-life
+  const lc = L(), start = data.weeks[wk].period.when_start; let pts = 0;
+  history.forEach(h => {
+    const gap = days(h.week, start);
+    if (gap >= 0 && gap < 10) return;   // picked for this very week: that's the choice, not history
+    const s = nameKey(h.name) === nameKey(name) ? 1 : similarity(h.name, name);
+    if (s < lc.similar) return;
+    pts += lc.repeat_points * (s === 1 ? 1 : 0.7) * Math.pow(0.5, Math.abs(gap) / 7 / lc.repeat_half_life_weeks);
+  });
+  return Math.min(lc.repeat_max, pts);
+}
+function vary(list) {   // at most N of one main ingredient and no near-identical variants in the top N; the rest keep their order
+  const n = data.config.top_n, cap = (data.config.variety || {}).max_per_main || 2, sim = L().similar;
+  const top = [], count = {};
+  for (const x of list) {
+    if (top.length === n) break;
+    const m = x.i.main;
+    if (m !== "Other" && (count[m] || 0) >= cap) continue;
+    if (top.some(o => similarity(o.i.name, x.i.name) >= sim)) continue;
+    top.push(x); count[m] = (count[m] || 0) + 1;
+  }
+  return [...top, ...list.filter(x => !top.includes(x))];
 }
 const weekKey = () => data.weeks[wk].period.when_start.slice(0, 10);
 const isPicked = i => (prefs.picks || []).some(x => x.n === i.name && x.w === weekKey());
@@ -289,13 +335,14 @@ function avoidHit(i) {
 /* ---------- preferences ---------- */
 function defaults() {
   const w = data.config.weights;
-  return { v: 1, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [] };
+  return { v: 2, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [], variety: true };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
-  return { v: 1, w: { ...d.w, ...(saved.w||{}) }, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
+  // v2 changed how the dials are scaled, so dial positions saved before then start again from the new defaults
+  return { v: 2, w: { ...d.w, ...((saved.v >= 2 && saved.w) || {}) }, variety: saved.variety == null ? true : !!saved.variety, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
            protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, avoid: Array.isArray(saved.avoid) ? saved.avoid : [],
            learn: saved.learn == null ? 100 : +saved.learn,
            picks: Array.isArray(saved.picks) ? saved.picks : [] };
@@ -307,22 +354,24 @@ function score(i) {
   const base = total ? DIALS.reduce((a,[k]) => a + w[k]*parts[k], 0) / total * 100 : 50;
   const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0, dl = prefs.dish[i.dish] || 0;
   const avoided = avoidHit(i);
-  const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided;
-  const pb = profile.bonus || {};
+  const ve = voteEffect(i.name);
+  const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided || ve.hide;
+  const pb = profile.bonus || {}, cap = L().tag_cap;
   const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
   const vbs = (voteBonus.main[i.main]||0) + (voteBonus.style[i.style]||0) + (voteBonus.dish[i.dish]||0);
-  const lb = (hist + vbs) * (prefs.learn / 100);
-  const ve = voteEffect(i.name);
-  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + ve.pts;
-  return { s: base + adj, parts, pl, cl, dl, lb, ve, hidden, avoided };
+  const lb = Math.max(-cap, Math.min(cap, hist + vbs)) * (prefs.learn / 100);   // one cap so three related tags can't triple-count
+  const rb = repeatBonus(i.name) * (prefs.learn / 100);
+  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + rb + ve.pts;
+  return { s: base + adj, parts, pl, cl, dl, lb, rb, ve, hidden, avoided };
 }
 
 function why(i, r) {
-  const t = { rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`, protein:`${i.protein_g}g protein for ${i.calories} kcal`,
+  const t = { rating:`rated ${i.rating}/5 by ${i.rating_count.toLocaleString()} cooks`, protein:`${i.protein_g}g protein`,
               calories:`${i.calories} kcal`, time:`ready in ${i.cook_time} min`, veg:`${i.five_a_day} of your 5-a-day` };
   const keys = DIALS.map(d=>d[0]).filter(k => prefs.w[k] > 0 && r.parts[k] >= .5 && !(k==="calories" && i.calories > 600) && !(k==="veg" && !i.five_a_day))
     .sort((a,b) => r.parts[b]*prefs.w[b] - r.parts[a]*prefs.w[a]).slice(0,3);
-  return keys.length ? keys.map(k=>t[k]).join("; ").replace(/^./, c=>c.toUpperCase()) : "Balanced all-rounder";
+  const out = keys.map(k=>t[k]);   // history and votes are shown as chips instead
+  return out.length ? out.join("; ").replace(/^./, c=>c.toUpperCase()) : "Balanced all-rounder";
 }
 
 const fmt = x => new Date(x).toLocaleDateString("en-GB", { day:"numeric", month:"short" });
@@ -335,13 +384,17 @@ function renderPicks() {
     const hay = [i.name, i.main, i.style, i.dish, ...(ingredientsOf(i) || [])].join(" | ").toLowerCase();
     return terms.every(t => hay.includes(t));
   })();
-  let items = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium) && matches(i)).map(i => ({ i, r: score(i) }))
-    .filter(({i, r}) => !r.hidden && (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal))
-    .sort((a,b) => b.r.s - a.r.s);
+  const fits = ({i}) => (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal);
+  const scored = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium) && matches(i)).map(i => ({ i, r: score(i) }));
+  let items = scored.filter(x => !x.r.hidden && fits(x)).sort((a,b) => b.r.s - a.r.s);
+  if (prefs.variety && !terms.length) items = vary(items);
   const n = items.length;
+  // thumbs-down recipes are hidden, but listed at the bottom of the whole menu so a vote can be undone
+  const downed = scored.filter(x => x.r.ve.hide && !(x.r.hidden && (x.r.pl === -2 || x.r.cl === -2 || x.r.dl === -2 || x.r.avoided)) && fits(x));
   const off = terms.length ? data.weeks[wk].all.filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
   const offNote = off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "";
   if (!whole && !terms.length) items = items.slice(0, data.config.top_n);
+  else items = [...items, ...downed];
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
     const chips = [];
     if (r.pl > 0) chips.push(`<span class="chip ${r.pl>1?"hi":""}">${r.pl>1?"Love":"More"}: ${esc(i.main)}</span>`);
@@ -351,6 +404,8 @@ function renderPicks() {
     if (r.dl > 0) chips.push(`<span class="chip ${r.dl>1?"hi":""}">${r.dl>1?"Love":"More"}: ${esc(i.dish)}</span>`);
     if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
     if (isPicked(i)) chips.push('<span class="chip hi">In your box</span>');
+    if (r.ve.hide) chips.push('<span class="chip warn">Hidden by a thumbs down</span>');
+    if (r.rb > 0) chips.push('<span class="chip hi">Picked before</span>');
     if (r.ve.mine > 0) chips.push('<span class="chip hi">You liked this</span>');
     if (r.ve.mine < 0) chips.push('<span class="chip warn">You disliked this</span>');
     if (r.ve.up.length) chips.push(`<span class="chip hi">Liked by ${esc(r.ve.up.join(", "))}</span>`);
@@ -364,10 +419,11 @@ function renderPicks() {
       <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
       <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}
       <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button><button class="pickbtn" data-pick="${esc(i.name)}" aria-pressed="${isPicked(i)}">${isPicked(i) ? "Picked" : "I'm picking this"}</button></div>`;
-    const cls = r.ve.pts < 0 ? " down" : "";
+    const cls = r.ve.hide ? " down" : "";
     return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy" onerror="this.remove()"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
   }).join("") : `<div class="card">${terms.length ? `No recipes match "${esc(q)}".${esc(offNote)} Your avoided ingredients and limits also apply.` : "Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never."}</div>`;
-  $("sub").textContent = terms.length ? `${n} recipes match "${q}" · ranked for you.${offNote}` : `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
+  const downNote = downed.length && !terms.length ? ` · ${downed.length} hidden by a thumbs down${whole ? " (listed at the bottom)" : ""}` : "";
+  $("sub").textContent = terms.length ? `${n} recipes match "${q}" · ranked for you.${offNote}` : `${n} recipes fit your settings${downNote} · data from ${fmt(data.generated_at)}`;
 }
 
 function seg(group, name, count) {
@@ -399,6 +455,7 @@ function renderPrefs() {
   $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
   renderAvoid();
   renderPickList();
+  $("variety").checked = prefs.variety !== false;
   $("learn").value = prefs.learn; $("learn").nextElementSibling.textContent = prefs.learn + "%";
   const P = profile;
   const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
@@ -406,8 +463,8 @@ function renderPrefs() {
   const count = set => { const v = Object.values(set); const up = v.filter(x => x.v > 0).length; return [up, v.length - up]; };
   const [mu, md] = count(myVotes());
   const others = Object.entries(voteSets).filter(([w]) => w !== me).reduce((a, [, s]) => { const [u, d] = count(s); return [a[0] + u, a[1] + d]; }, [0, 0]);
-  $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + ((shared || cfg) ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " Each thumb moves that recipe and nudges its tags, so similar recipes move too.";
-  $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked (${P.base} from your saved history, ${P.user} entered on this site). You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
+  $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + ((shared || cfg) ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " A thumbs up moves that recipe up and nudges similar recipes. A thumbs down from anyone hides it (tick Show whole menu to find it again).";
+  $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked (${P.base} from your saved history, ${P.user} entered on this site). You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score (at most ${L().tag_cap} in total). Recipes you've picked before also get up to ${L().repeat_max} points.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
 }
@@ -497,6 +554,7 @@ function wire() {
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
+  $("variety").onchange = e => { prefs.variety = e.target.checked; changed(); };
   $("search").oninput = renderPicks;
   $("reset").onclick = () => { const keep = prefs.picks; prefs = defaults(); prefs.picks = keep; renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {

@@ -37,6 +37,11 @@ def fetch_via_api(weeks=3):
     return [_get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=_delivery_date(p))) for p in periods]
 
 
+def fetch_menu_for(delivery_date):
+    """The menu that was (or will be) delivered on this date, e.g. a past week's menu for learning."""
+    return _get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=delivery_date))
+
+
 def fetch_via_playwright(weeks=3):
     """Open the real menu page, then call the same feed from inside it for each upcoming week."""
     from playwright.sync_api import sync_playwright
