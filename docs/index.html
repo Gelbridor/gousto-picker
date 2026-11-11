@@ -302,6 +302,8 @@ function renderPicks() {
     .filter(({i, r}) => !r.hidden && (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal))
     .sort((a,b) => b.r.s - a.r.s);
   const n = items.length;
+  const off = terms.length ? data.weeks[wk].all.filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
+  const offNote = off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "";
   if (!whole && !terms.length) items = items.slice(0, data.config.top_n);
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
     const chips = [];
@@ -326,8 +328,8 @@ function renderPicks() {
       <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
     const cls = r.ve.pts < 0 ? " down" : "";
     return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy" onerror="this.remove()"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
-  }).join("") : `<div class="card">${terms.length ? `No recipes match "${esc(q)}". Your avoided ingredients, limits and vegan or premium switches also apply.` : "Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never."}</div>`;
-  $("sub").textContent = terms.length ? `${n} recipes match "${q}" · ranked for you` : `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
+  }).join("") : `<div class="card">${terms.length ? `No recipes match "${esc(q)}".${esc(offNote)} Your avoided ingredients and limits also apply.` : "Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never."}</div>`;
+  $("sub").textContent = terms.length ? `${n} recipes match "${q}" · ranked for you.${offNote}` : `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
 }
 
 function seg(group, name, count) {
