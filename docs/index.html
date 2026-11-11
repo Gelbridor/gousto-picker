@@ -100,8 +100,14 @@ h2{font-weight:800}
 .vote button[data-vote="down"] svg{transform:rotate(180deg)}
 .vote button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .vote button[data-vote="down"][aria-pressed="true"]{background:var(--slate);border-color:var(--slate);color:var(--surface)}
-textarea#voteOut{width:100%;min-height:90px;font:inherit;font-size:.8rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px}
+textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0;font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font:inherit;font-size:.82rem;font-weight:700;border:0;border-radius:99px;padding:5px 12px;background:var(--slate);color:var(--surface)}
+.pill.add{background:transparent;border:1px dashed var(--line);color:var(--mute);font-weight:600}
+.hint{color:var(--mute);font-size:.84rem}
 </style>
 </head>
 <body>
@@ -136,9 +142,17 @@ textarea#voteOut{width:100%;min-height:90px;font:inherit;font-size:.8rem;backgro
       <h2>Your history</h2>
       <p id="histText"></p>
       <p id="votesText"></p>
-      <div class="btnrow"><button class="ghost" id="copyVotes">Copy my votes</button><button class="ghost" id="clearVotes">Clear votes</button></div>
-      <textarea id="voteOut" readonly hidden></textarea>
+            <div class="btnrow"><button class="ghost" id="clearVotes">Clear my votes</button></div>
       <div class="dial"><label for="learn">Use history</label><input type="range" id="learn" min="0" max="200" step="10" value="100"><output>100%</output></div>
+    </div>
+    <div class="group" id="avoid">
+      <h2>Ingredients to avoid</h2>
+      <p>Recipes containing these are hidden. Checked against each recipe's ingredient list from Gousto.</p>
+      <form id="avoidForm" class="addrow"><input id="avoidInput" list="avoidNames" placeholder="e.g. mushroom, pork loin" autocomplete="off" autocapitalize="none" aria-label="Ingredient to avoid"><button class="ghost" type="submit">Add</button></form>
+      <datalist id="avoidNames"></datalist>
+      <div id="avoidList" class="pills"></div>
+      <div id="avoidQuick" class="pills"></div>
+      <p id="avoidNote"></p>
     </div>
     <div class="group">
       <h2>Limits</h2>
@@ -170,28 +184,51 @@ textarea#voteOut{width:100%;min-height:90px;font:inherit;font-size:.8rem;backgro
 const DIALS = [["rating","Rating"],["protein","Protein"],["calories","Light"],["time","Quick"],["veg","Veg (5-a-day)"]];
 const LEVELS = [[-2,"Never","neg"],[-1,"Less","neg"],[0,"OK",""],[1,"More",""],[2,"Love",""]];
 const BONUS = {"-1":-10,"0":0,"1":8,"2":16};
+const QUICK_AVOID = ["mushroom","coriander","olives","aubergine","pork mince","pork loin","prawn","egg","blue cheese","nuts"];
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-
-let wk = 0, data = null, prefs = null, votes = {}, voteBonus = { main: {}, style: {}, dish: {} };
 const THUMB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>';
-function loadVotes() { try { votes = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) { votes = {}; } calcVoteBonus(); }
-function saveVotes() { try { localStorage.setItem("gousto-votes", JSON.stringify(votes)); } catch (e) {} calcVoteBonus(); }
+
+let wk = 0, data = null, prefs = null, ing = null;
+let me = "local";                 // this viewer's key in voteSets
+let voteSets = { local: {} };     // everyone's votes: { who: { recipeName: {v, main, style, dish} } }
+let voteBonus = { main: {}, style: {}, dish: {} };
+let db = null, shared = false, saveTimer = null;
+
+/* ---------- votes ---------- */
+const myVotes = () => voteSets[me] || (voteSets[me] = {});
 function calcVoteBonus() {   // every thumb nudges that recipe's tags by 3 points, capped at 10
   voteBonus = { main: {}, style: {}, dish: {} };
-  Object.values(votes).forEach(x => ["main","style","dish"].forEach(d => { if (x[d]) voteBonus[d][x[d]] = Math.max(-10, Math.min(10, (voteBonus[d][x[d]]||0) + 3 * x.v)); }));
+  Object.values(voteSets).forEach(set => Object.values(set).forEach(x => ["main","style","dish"].forEach(d => {
+    if (x[d]) voteBonus[d][x[d]] = Math.max(-10, Math.min(10, (voteBonus[d][x[d]] || 0) + 3 * x.v));
+  })));
+}
+function voteEffect(name) {   // thumbs up +20, down -40, summed over everyone who voted
+  let pts = 0, others = 0;
+  Object.entries(voteSets).forEach(([who, set]) => { const x = set[name]; if (!x) return; pts += x.v > 0 ? 20 : -40; if (who !== me) others += x.v; });
+  return { pts, mine: (myVotes()[name] || {}).v || 0, others };
 }
 
+/* ---------- ingredients to avoid ---------- */
+function ingredientsOf(i) { const idx = ing && ing.recipes[i.id]; return idx ? idx.map(n => ing.names[n]) : null; }
+function avoidHit(i) {
+  if (!prefs.avoid.length) return null;
+  const texts = [i.name.toLowerCase(), ...(ingredientsOf(i) || [])];
+  return prefs.avoid.find(t => { const re = new RegExp("\\b" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"); return texts.some(x => re.test(x)); }) || null;
+}
+
+/* ---------- preferences ---------- */
 function defaults() {
   const w = data.config.weights;
   return { v: 1, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, learn: 100 };
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100 };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
   return { v: 1, w: { ...d.w, ...(saved.w||{}) }, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
-           protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, learn: saved.learn == null ? 100 : +saved.learn };
+           protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, avoid: Array.isArray(saved.avoid) ? saved.avoid : [],
+           learn: saved.learn == null ? 100 : +saved.learn };
 }
 
 function score(i) {
@@ -199,14 +236,15 @@ function score(i) {
   const total = Object.values(w).reduce((a,b)=>a+b,0);
   const base = total ? DIALS.reduce((a,[k]) => a + w[k]*parts[k], 0) / total * 100 : 50;
   const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0, dl = prefs.dish[i.dish] || 0;
-  const hidden = pl === -2 || cl === -2 || dl === -2;
+  const avoided = avoidHit(i);
+  const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided;
   const pb = (data.profile && data.profile.bonus) || {};
   const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
   const vbs = (voteBonus.main[i.main]||0) + (voteBonus.style[i.style]||0) + (voteBonus.dish[i.dish]||0);
   const lb = (hist + vbs) * (prefs.learn / 100);
-  const rv = (votes[i.name] || {}).v || 0;
-  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + (rv > 0 ? 20 : rv < 0 ? -40 : 0);
-  return { s: base + adj, parts, pl, cl, dl, lb, rv, hidden };
+  const ve = voteEffect(i.name);
+  const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + ve.pts;
+  return { s: base + adj, parts, pl, cl, dl, lb, ve, hidden, avoided };
 }
 
 function why(i, r) {
@@ -217,14 +255,15 @@ function why(i, r) {
   return keys.length ? keys.map(k=>t[k]).join("; ").replace(/^./, c=>c.toUpperCase()) : "Balanced all-rounder";
 }
 
+const fmt = x => new Date(x).toLocaleDateString("en-GB", { day:"numeric", month:"short" });
+
 function renderPicks() {
   if (!data) return;
   const v = $("vegan").checked, p = $("premium").checked, whole = $("whole").checked;
-  let n = 0;
   let items = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium)).map(i => ({ i, r: score(i) }))
     .filter(({i, r}) => !r.hidden && (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal))
     .sort((a,b) => b.r.s - a.r.s);
-  n = items.length;
+  const n = items.length;
   if (!whole) items = items.slice(0, data.config.top_n);
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
     const chips = [];
@@ -234,22 +273,24 @@ function renderPicks() {
     if (r.cl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.style)}</span>`);
     if (r.dl > 0) chips.push(`<span class="chip ${r.dl>1?"hi":""}">${r.dl>1?"Love":"More"}: ${esc(i.dish)}</span>`);
     if (r.dl < 0) chips.push(`<span class="chip warn">Less: ${esc(i.dish)}</span>`);
-    if (r.rv > 0) chips.push('<span class="chip hi">You liked this</span>');
-    if (r.rv < 0) chips.push('<span class="chip warn">You disliked this</span>');
+    if (r.ve.mine > 0) chips.push('<span class="chip hi">You liked this</span>');
+    if (r.ve.mine < 0) chips.push('<span class="chip warn">You disliked this</span>');
+    if (r.ve.others > 0) chips.push('<span class="chip hi">Liked by someone else</span>');
+    if (r.ve.others < 0) chips.push('<span class="chip warn">Disliked by someone else</span>');
     if (r.lb >= 8) chips.push('<span class="chip hi">Like your usual picks</span>');
     else if (r.lb <= -10) chips.push('<span class="chip warn">Unlike your usual picks</span>');
+    if (prefs.avoid.length && !ingredientsOf(i)) chips.push('<span class="chip warn">Ingredients not checked</span>');
     if (i.vegan) chips.push('<span class="chip">vegan</span>');
     if (i.premium) chips.push(`<span class="chip warn">+£${i.surcharge_pp.toFixed(2)}/portion</span>`);
     const body = `<div class="top"><div class="name"><span class="rank">${k+1}</span><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.name)}</a></div><div class="score">${r.s.toFixed(0)}</div></div>
       <div class="meta"><span>${i.cook_time} min</span><span>${i.calories} kcal</span><span>${i.protein_g}g protein</span><span>${i.rating} stars</span><span>${esc(i.main)} · ${esc(i.style)} · ${esc(i.dish)}</span></div>
       <div class="why">${esc(why(i, r))}</div>${chips.length?`<div class="chips">${chips.join("")}</div>`:""}
-      <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.rv>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.rv<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
-    const cls = r.rv < 0 ? " down" : "";
-    return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
-  }).join("") : '<div class="card">Nothing matches. Loosen a limit or set fewer recipes to Never.</div>';
+      <div class="vote"><button data-vote="up" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine>0}" aria-label="Thumbs up">${THUMB}</button><button data-vote="down" data-name="${esc(i.name)}" aria-pressed="${r.ve.mine<0}" aria-label="Thumbs down">${THUMB}</button></div>`;
+    const cls = r.ve.pts < 0 ? " down" : "";
+    return i.image ? `<article class="card has-img${cls}"><img src="${esc(i.image)}" alt="" loading="lazy" onerror="this.remove()"><div class="inner">${body}</div></article>` : `<article class="card${cls}">${body}</article>`;
+  }).join("") : '<div class="card">Nothing matches. Loosen a limit, remove an avoided ingredient or set fewer recipes to Never.</div>';
   $("sub").textContent = `${n} recipes fit your settings · data from ${fmt(data.generated_at)}`;
 }
-const fmt = x => new Date(x).toLocaleDateString("en-GB", { day:"numeric", month:"short" });
 
 function seg(group, name, count) {
   const cur = prefs[group][name] || 0;
@@ -257,6 +298,15 @@ function seg(group, name, count) {
     <div class="seg" data-g="${group}" data-n="${esc(name)}">${LEVELS.map(([val,lab,cls]) =>
       `<button class="${cls}" data-v="${val}" aria-pressed="${cur===val}">${lab}</button>`).join("")}</div></div>`;
 }
+
+function renderAvoid() {
+  $("avoidList").innerHTML = prefs.avoid.length ? prefs.avoid.map(t => `<button class="pill" data-remove="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} <span aria-hidden="true">×</span></button>`).join("") : '<span class="hint">Nothing avoided yet.</span>';
+  $("avoidQuick").innerHTML = QUICK_AVOID.filter(t => !prefs.avoid.includes(t)).map(t => `<button class="pill add" data-add="${esc(t)}">+ ${esc(t)}</button>`).join("");
+  const all = data.weeks[wk].all, hit = all.filter(i => avoidHit(i)).length, unknown = prefs.avoid.length ? all.filter(i => !ingredientsOf(i)).length : 0;
+  $("avoidNote").textContent = !ing ? "Ingredient lists are not loaded, so only recipe names are checked."
+    : prefs.avoid.length ? `${hit} of this week's ${all.length} recipes are hidden.${unknown ? ` ${unknown} recipes have no ingredient list yet and are only checked by name.` : ""}` : "Matches whole words at the start, so egg also hides eggs and egg noodles.";
+}
+
 function renderPrefs() {
   $("dials").innerHTML = DIALS.map(([k,l]) => `<div class="dial"><label for="d-${k}">${l}</label>
     <input type="range" id="d-${k}" min="0" max="100" step="5" value="${prefs.w[k]}" data-k="${k}"><output>${Math.round(prefs.w[k])}</output></div>`).join("");
@@ -264,22 +314,39 @@ function renderPrefs() {
   $("proteins").innerHTML = counts("main").map(([n,c]) => seg("protein", n, c)).join("");
   $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
   $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
+  renderAvoid();
   $("learn").value = prefs.learn; $("learn").nextElementSibling.textContent = prefs.learn + "%";
   const P = data.profile || { n: 0, top: [] };
   const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
   const likes = P.top.filter(t => t.bonus >= 4).slice(0, 5).map(fmtB), dislikes = P.top.filter(t => t.bonus <= -4).slice(-4).reverse().map(fmtB);
-  const vs = Object.values(votes), up = vs.filter(x => x.v > 0).length, dn = vs.length - up;
-  $("votesText").textContent = `Votes on this device: ${up} thumbs up, ${dn} thumbs down. Each thumb nudges that recipe and its tags, so similar recipes move too.`;
+  const count = set => { const v = Object.values(set); const up = v.filter(x => x.v > 0).length; return [up, v.length - up]; };
+  const [mu, md] = count(myVotes());
+  const others = Object.entries(voteSets).filter(([w]) => w !== me).reduce((a, [, s]) => { const [u, d] = count(s); return [a[0] + u, a[1] + d]; }, [0, 0]);
+  $("votesText").textContent = `Your votes: ${mu} up, ${md} down.` + (shared ? ` Others: ${others[0]} up, ${others[1]} down.` : "") + " Each thumb moves that recipe and nudges its tags, so similar recipes move too.";
   $("histText").innerHTML = P.n ? `Learned from <b>${P.n}</b> recipes you've picked. You pick more of: ${esc(likes.join(", ") || "nothing stands out yet")}. You pick fewer of: ${esc(dislikes.join(", ") || "nothing stands out yet")}. Points shown are added to a recipe's score.` : "No picks recorded yet.";
   $("maxTime").innerHTML = [[0,"No limit"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[40,"40 min"],[50,"50 min"]].map(([v,l])=>`<option value="${v}" ${prefs.maxTime===v?"selected":""}>${l}</option>`).join("");
   $("maxKcal").innerHTML = [[0,"No limit"],[500,"500 kcal"],[600,"600 kcal"],[700,"700 kcal"],[800,"800 kcal"]].map(([v,l])=>`<option value="${v}" ${prefs.maxKcal===v?"selected":""}>${l}</option>`).join("");
 }
 
-function changed() {
-  renderPicks();
+/* ---------- saving: shared database when available, else this device ---------- */
+function setStatus(t) { $("saved").textContent = t; }
+function savePrefs() {
   try { localStorage.setItem("gousto-prefs", JSON.stringify(prefs)); } catch (e) {}
-  $("saved").textContent = "Saved on this device";
+  if (!shared) { setStatus("Saved on this device"); return; }
+  setStatus("Saving…"); clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { await db.doc("prefs/main").set(prefs); setStatus("Saved for everyone using this page"); }
+    catch (e) { setStatus("Could not save to the shared store. Try again."); }
+  }, 700);
 }
+async function saveVotes() {
+  calcVoteBonus();
+  try { localStorage.setItem("gousto-votes", JSON.stringify(myVotes())); } catch (e) {}
+  if (!shared) return;
+  try { await db.doc("votes/" + me).set({ votes: myVotes() }); } catch (e) { setStatus("Could not save your vote to the shared store."); }
+}
+function changed() { renderPicks(); savePrefs(); }
+function addAvoid(t) { t = t.trim().toLowerCase(); if (!t || prefs.avoid.includes(t)) return; prefs.avoid.push(t); renderAvoid(); changed(); }
 
 function wire() {
   $("dials").addEventListener("input", e => { const k = e.target.dataset.k; if (!k) return; prefs.w[k] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value; changed(); });
@@ -292,17 +359,18 @@ function wire() {
   }));
   $("list").addEventListener("click", e => {
     const b = e.target.closest("button[data-vote]"); if (!b) return;
-    const name = b.dataset.name, dir = b.dataset.vote === "up" ? 1 : -1;
-    if ((votes[name] || {}).v === dir) delete votes[name];
-    else { const rec = data.weeks[wk].all.find(x => x.name === name) || {}; votes[name] = { v: dir, main: rec.main, style: rec.style, dish: rec.dish }; }
+    const name = b.dataset.name, dir = b.dataset.vote === "up" ? 1 : -1, mine = myVotes();
+    if ((mine[name] || {}).v === dir) delete mine[name];
+    else { const rec = data.weeks[wk].all.find(x => x.name === name) || {}; mine[name] = { v: dir, main: rec.main, style: rec.style, dish: rec.dish }; }
     saveVotes(); renderPicks(); renderPrefs();
   });
-  $("clearVotes").onclick = () => { votes = {}; saveVotes(); renderPicks(); renderPrefs(); $("voteOut").hidden = true; };
-  $("copyVotes").onclick = () => {
-    const lines = Object.entries(votes).map(([n, x]) => (x.v > 0 ? "+ " : "- ") + n);
-    const out = $("voteOut"); out.value = lines.join("\n") || "No votes yet"; out.hidden = false; out.select();
-    try { navigator.clipboard.writeText(out.value).catch(() => {}); } catch (e) {}
-  };
+  $("clearVotes").onclick = () => { voteSets[me] = {}; saveVotes(); renderPicks(); renderPrefs(); };
+  $("avoidForm").onsubmit = e => { e.preventDefault(); addAvoid($("avoidInput").value); $("avoidInput").value = ""; };
+  $("avoid").addEventListener("click", e => {
+    const a = e.target.closest("[data-add]"), r = e.target.closest("[data-remove]");
+    if (a) addAvoid(a.dataset.add);
+    if (r) { prefs.avoid = prefs.avoid.filter(t => t !== r.dataset.remove); renderAvoid(); changed(); }
+  });
   $("learn").oninput = e => { prefs.learn = +e.target.value; e.target.nextElementSibling.textContent = prefs.learn + "%"; renderPrefs(); changed(); };
   $("maxTime").onchange = e => { prefs.maxTime = +e.target.value; changed(); };
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
@@ -312,17 +380,47 @@ function wire() {
     $(a).setAttribute("aria-selected","true"); $(b).setAttribute("aria-selected","false"); $(pa).hidden = false; $(pb).hidden = true; });
 }
 
+/* ---------- shared storage (only exists when the page runs as a shared Claude artifact) ---------- */
+async function connectShared() {
+  if (typeof claude === "undefined" || !claude.use) return;
+  try {
+    const [d, u] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const uid = u && (await u.id());
+    if (!d || !uid) return;
+    db = d; me = uid; shared = true; voteSets = { [me]: {} };
+    setStatus("Connecting to shared storage…");
+    const timer = setTimeout(() => setStatus("Shared storage is slow to answer. Changes are kept on this device meanwhile."), 10000);
+    db.doc("prefs/main").onSnapshot(snap => {
+      clearTimeout(timer);
+      if (snap.metadata.hasPendingWrites) return;
+      if (snap.exists) {
+        const next = merge(snap.data());
+        if (JSON.stringify(next) !== JSON.stringify(prefs)) { prefs = next; renderPrefs(); renderPicks(); }
+      }
+      setStatus("Shared: saved for everyone using this page");
+    }, () => setStatus("Could not reach shared storage. Using this device only."));
+    db.collection("votes").onSnapshot(snap => {
+      const sets = { [me]: myVotes() };
+      snap.docs.forEach(doc => { if (doc.id !== me) sets[doc.id] = (doc.data() || {}).votes || {}; else sets[me] = (doc.data() || {}).votes || {}; });
+      voteSets = sets; calcVoteBonus(); renderPicks(); renderPrefs();
+    }, () => {});
+  } catch (e) { shared = false; }
+}
+
 async function start() {
-  const res = await fetch("data/shortlist.json",{cache:"no-cache"});
+  const res = await fetch("data/shortlist.json", { cache: "no-cache" });
   data = await res.json();
   if (!data.weeks) data.weeks = [{ period: data.period, all: data.all }];
+  try { const r = await fetch("data/ingredients.json", { cache: "no-cache" }); if (r.ok) ing = await r.json(); } catch (e) {}
+  if (ing) $("avoidNames").innerHTML = ing.common.map(n => `<option value="${esc(n)}">`).join("");
   $("week").innerHTML = data.weeks.map((w, i) => `<option value="${i}">${i ? "" : "This week · "}${fmt(w.period.when_start)} to ${fmt(w.period.when_cutoff)}</option>`).join("");
   $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
   let local = null;
-  try { local = JSON.parse(localStorage.getItem("gousto-prefs")); } catch (e) {}
-  prefs = merge(local); loadVotes();
+  try { local = JSON.parse(localStorage.getItem("gousto-prefs")); voteSets.local = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) {}
+  prefs = merge(local); calcVoteBonus();
   renderPrefs(); wire(); renderPicks();
-  $("saved").textContent = "Saved on this device";
+  setStatus("Saved on this device");
+  connectShared();
 }
 start().catch(e => { $("sub").textContent = "Could not load the menu data: " + e.message; });
 </script>

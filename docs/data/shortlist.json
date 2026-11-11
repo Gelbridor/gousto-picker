@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-11T19:21:06+00:00",
+ "generated_at": "2026-11-11T19:33:14+00:00",
  "source": "api",
  "config": {
   "top_n": 8,
@@ -4037,7 +4037,7 @@
      "fat_g": 12,
      "five_a_day": 2,
      "rating": 4.21,
-     "rating_count": 110117,
+     "rating_count": 110118,
      "diet": [
       "dairy-free"
      ],
@@ -4050,7 +4050,7 @@
      "dish": "Wraps, tacos & kebabs",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/1417---Shredded-Hoisin-Chicken-Wraps-1790068689365-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.209981870427948,
+     "bayes_rating": 4.209981870592287,
      "components": {
       "rating": 0.563,
       "protein": 0.517,
@@ -4058,7 +4058,7 @@
       "time": 0.8
      },
      "score": 61.8,
-     "why": "Rated 4.21/5 by 110,117 cooks; ready in 20 min; light at 535 kcal"
+     "why": "Rated 4.21/5 by 110,118 cooks; ready in 20 min; light at 535 kcal"
     },
     {
      "id": "8f281543-45e4-42d8-90e2-8e7e65e043e3",
@@ -8523,7 +8523,7 @@
      "fat_g": 23,
      "five_a_day": 2,
      "rating": 4.18,
-     "rating_count": 1565,
+     "rating_count": 1566,
      "diet": [
       "dairy-free",
       "vegan",
@@ -8538,7 +8538,7 @@
      "dish": "Curry & rice",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/7799---Hoisin-Tofu--Cashew-Nuts-With-Spinach-Rice-1790067986232-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.182266288951841,
+     "bayes_rating": 4.182265005662514,
      "components": {
       "rating": 0.533,
       "protein": 0.31,
@@ -8546,7 +8546,7 @@
       "time": 0.8
      },
      "score": 54.7,
-     "why": "Rated 4.18/5 by 1,565 cooks; ready in 20 min"
+     "why": "Rated 4.18/5 by 1,566 cooks; ready in 20 min"
     },
     {
      "id": "c845d57c-9cf4-4120-bb99-9860bfff13b4",
@@ -9806,7 +9806,7 @@
      "fat_g": 4,
      "five_a_day": 2,
      "rating": 4.08,
-     "rating_count": 13468,
+     "rating_count": 13469,
      "diet": [
       "dairy-free",
       "vegetarian"
@@ -9820,7 +9820,7 @@
      "dish": "Noodles & stir-fry",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/3423_Sticky-Mushroom--Broccoli-Noodle-Stir-Fry-1789999908153-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.081755926251097,
+     "bayes_rating": 4.081755797790621,
      "components": {
       "rating": 0.425,
       "protein": 0.221,
@@ -10785,7 +10785,7 @@
      "fat_g": 21,
      "five_a_day": 3,
      "rating": 4.13,
-     "rating_count": 2102,
+     "rating_count": 2103,
      "diet": [
       "dairy-free",
       "vegan",
@@ -10800,7 +10800,7 @@
      "dish": "Pies, stews & roasts",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/3714_Plant-Based-Veg-Crumble-With-Spring-Greens-5459-1631109374686-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.136081668114683,
+     "bayes_rating": 4.136079027355623,
      "components": {
       "rating": 0.483,
       "protein": 0.029,
@@ -11265,7 +11265,7 @@
      "fat_g": 11,
      "five_a_day": 1,
      "rating": 4.43,
-     "rating_count": 10096,
+     "rating_count": 10097,
      "diet": [
       "gluten-free"
      ],
@@ -11278,7 +11278,7 @@
      "dish": "Other",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/8650_Chicken-Au-Poivre-With-Buttered-Kale--Potatoes-1786627824353-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.425532245532246,
+     "bayes_rating": 4.425532679421191,
      "components": {
       "rating": 0.745,
       "protein": 0.699,
@@ -11286,7 +11286,7 @@
       "time": 0.923
      },
      "score": 78.7,
-     "why": "Rated 4.43/5 by 10,096 cooks; 34g protein for 365 kcal; ready in 10 min"
+     "why": "Rated 4.43/5 by 10,097 cooks; 34g protein for 365 kcal; ready in 10 min"
     },
     {
      "id": "69551c9d-a996-4866-a2c5-26eef7e61fe9",
@@ -11562,7 +11562,7 @@
      "fat_g": 11,
      "five_a_day": 1,
      "rating": 4.43,
-     "rating_count": 10096,
+     "rating_count": 10097,
      "diet": [
       "gluten-free"
      ],
@@ -11575,7 +11575,7 @@
      "dish": "Other",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/8650_Chicken-Au-Poivre-With-Buttered-Kale--Potatoes-1786627824353-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.425532245532246,
+     "bayes_rating": 4.425532679421191,
      "components": {
       "rating": 0.745,
       "protein": 0.699,
@@ -11583,7 +11583,7 @@
       "time": 0.923
      },
      "score": 78.7,
-     "why": "Rated 4.43/5 by 10,096 cooks; 34g protein for 365 kcal; ready in 10 min"
+     "why": "Rated 4.43/5 by 10,097 cooks; 34g protein for 365 kcal; ready in 10 min"
     },
     {
      "id": "58a09125-9773-479a-9499-0a59338f82be",
@@ -12873,7 +12873,7 @@
      "fat_g": 15,
      "five_a_day": 3,
      "rating": 4.4,
-     "rating_count": 6179,
+     "rating_count": 6180,
      "diet": [
       "vegetarian"
      ],
@@ -12886,7 +12886,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/7347_Tteokbokki-Style-Gnocchi-With-Sesame-Broccoli-1787317291309-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.3937294246747145,
+     "bayes_rating": 4.3937304075235115,
      "components": {
       "rating": 0.713,
       "protein": 0.193,
@@ -12894,7 +12894,7 @@
       "time": 0.923
      },
      "score": 65.4,
-     "why": "Rated 4.4/5 by 6,179 cooks; ready in 10 min; light at 490 kcal"
+     "why": "Rated 4.4/5 by 6,180 cooks; ready in 10 min; light at 490 kcal"
     },
     {
      "id": "9672d490-5e73-4ba3-9293-53d2b2bd73a4",
@@ -20865,7 +20865,7 @@
      "fat_g": 22,
      "five_a_day": 2,
      "rating": 4.24,
-     "rating_count": 42912,
+     "rating_count": 42913,
      "diet": [
       "gluten-free"
      ],
@@ -20878,7 +20878,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/1492-1787653992591-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.2398144368157356,
+     "bayes_rating": 4.239814441119848,
      "components": {
       "rating": 0.557,
       "protein": 0.219,
@@ -20886,7 +20886,7 @@
       "time": 0.538
      },
      "score": 50.8,
-     "why": "Rated 4.24/5 by 42,912 cooks; ready in 35 min"
+     "why": "Rated 4.24/5 by 42,913 cooks; ready in 35 min"
     },
     {
      "id": "7cae5bbf-5142-4afa-9ecd-e0f530560b6a",
@@ -24688,7 +24688,7 @@
      "fat_g": 22,
      "five_a_day": 1,
      "rating": 4.44,
-     "rating_count": 2237,
+     "rating_count": 2238,
      "diet": [
       "dairy-free"
      ],
@@ -24701,7 +24701,7 @@
      "dish": "Chips & fried",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/13812-Battered-basa-with-salt--vinegar-chips--mushy-peas-5569-1765548266428-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.420303652031186,
+     "bayes_rating": 4.42031173092699,
      "components": {
       "rating": 0.692,
       "protein": 0.363,
@@ -24709,7 +24709,7 @@
       "time": 0.894
      },
      "score": 68.0,
-     "why": "Rated 4.44/5 by 2,237 cooks; ready in 30 min; light at 474 kcal"
+     "why": "Rated 4.44/5 by 2,238 cooks; ready in 30 min; light at 474 kcal"
     },
     {
      "id": "99032948-5c29-4cce-9343-332590867ee3",
@@ -25280,7 +25280,7 @@
      "fat_g": 18,
      "five_a_day": 2,
      "rating": 4.4,
-     "rating_count": 27549,
+     "rating_count": 27550,
      "diet": [],
      "vegan": false,
      "premium": false,
@@ -25291,7 +25291,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/4715_Oven-Baked-Chicken-Thigh-Biryani-With-Yoghurt-1787910392876-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.398558506612851,
+     "bayes_rating": 4.398558558558559,
      "components": {
       "rating": 0.667,
       "protein": 0.37,
@@ -25299,7 +25299,7 @@
       "time": 0.915
      },
      "score": 65.8,
-     "why": "Rated 4.4/5 by 27,549 cooks; ready in 25 min; light at 585 kcal"
+     "why": "Rated 4.4/5 by 27,550 cooks; ready in 25 min; light at 585 kcal"
     },
     {
      "id": "ea2a0e76-1e6e-4175-a0e6-e113bbe27cfa",
@@ -27277,7 +27277,7 @@
      "fat_g": 20,
      "five_a_day": 2,
      "rating": 4.33,
-     "rating_count": 2411,
+     "rating_count": 2412,
      "diet": [],
      "vegan": false,
      "premium": false,
@@ -27288,7 +27288,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/7538---One-Pan-Gochujang-Pork-Bolognese-With-Udon-Noodles-1790933556427-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.320042129452317,
+     "bayes_rating": 4.320045941807045,
      "components": {
       "rating": 0.577,
       "protein": 0.395,
@@ -27296,40 +27296,7 @@
       "time": 0.915
      },
      "score": 61.3,
-     "why": "Rated 4.33/5 by 2,411 cooks; ready in 25 min"
-    },
-    {
-     "id": "033b34e9-f4b2-42ed-ae82-91d016807ebc",
-     "name": "Rump Steak With Cowboy Butter Sauce & Sweet Potato Mash",
-     "cook_time": 20,
-     "calories": 655,
-     "protein_g": 37,
-     "carbs_g": 47,
-     "fat_g": 37,
-     "five_a_day": 3,
-     "rating": 4.43,
-     "rating_count": 320,
-     "diet": [
-      "dairy-free"
-     ],
-     "vegan": false,
-     "premium": true,
-     "surcharge_pp": 3.5,
-     "cuisine": "Protein Hit",
-     "main": "Beef",
-     "style": "British & Comfort",
-     "dish": "Other",
-     "image": "https://production-media.gousto.co.uk/cms/mood-image/13963_Sirloin-Steak-With-Cowboy-Butter-Sauce--Sweet-Potato-Mash_002-1794211505508-x400.jpg",
-     "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.341538461538462,
-     "components": {
-      "rating": 0.602,
-      "protein": 0.338,
-      "calories": 0.695,
-      "time": 0.936
-     },
-     "score": 61.3,
-     "why": "Rated 4.43/5 by 320 cooks; ready in 20 min"
+     "why": "Rated 4.33/5 by 2,412 cooks; ready in 25 min"
     },
     {
      "id": "e5b6f2b4-1c41-4519-8c8e-587740040592",
@@ -27460,6 +27427,39 @@
      },
      "score": 60.9,
      "why": "Rated 4.37/5 by 1,132 cooks; ready in 35 min"
+    },
+    {
+     "id": "033b34e9-f4b2-42ed-ae82-91d016807ebc",
+     "name": "Rump Steak With Cowboy Butter Sauce & Sweet Potato Mash",
+     "cook_time": 20,
+     "calories": 655,
+     "protein_g": 37,
+     "carbs_g": 47,
+     "fat_g": 37,
+     "five_a_day": 3,
+     "rating": 4.42,
+     "rating_count": 321,
+     "diet": [
+      "dairy-free"
+     ],
+     "vegan": false,
+     "premium": true,
+     "surcharge_pp": 3.5,
+     "cuisine": "Protein Hit",
+     "main": "Beef",
+     "style": "British & Comfort",
+     "dish": "Other",
+     "image": "https://production-media.gousto.co.uk/cms/mood-image/13963_Sirloin-Steak-With-Cowboy-Butter-Sauce--Sweet-Potato-Mash_002-1794211505508-x400.jpg",
+     "url": "https://www.gousto.co.uk/menu",
+     "bayes_rating": 4.335547024952015,
+     "components": {
+      "rating": 0.595,
+      "protein": 0.338,
+      "calories": 0.695,
+      "time": 0.936
+     },
+     "score": 60.9,
+     "why": "Rated 4.42/5 by 321 cooks; ready in 20 min"
     },
     {
      "id": "220337e8-f518-422f-a4ea-ca6f5b0b5b4f",
@@ -28812,7 +28812,7 @@
      "fat_g": 8,
      "five_a_day": 1,
      "rating": 4.15,
-     "rating_count": 2380,
+     "rating_count": 2381,
      "diet": [
       "dairy-free"
      ],
@@ -28825,7 +28825,7 @@
      "dish": "Other",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/5176_Speedy-Sweet--Sour-Chicken-1787905363124-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.153875968992248,
+     "bayes_rating": 4.153874467260752,
      "components": {
       "rating": 0.385,
       "protein": 0.567,
@@ -29013,7 +29013,7 @@
      "fat_g": 19,
      "five_a_day": 1,
      "rating": 4.32,
-     "rating_count": 20251,
+     "rating_count": 20252,
      "diet": [
       "gluten-free"
      ],
@@ -29026,7 +29026,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/3296---Creamy-Carbonara-Risotto-With-Balsamic-Tomatoes0199-1616494922986-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.318826463253631,
+     "bayes_rating": 4.318826520633679,
      "components": {
       "rating": 0.575,
       "protein": 0.28,
@@ -29034,7 +29034,7 @@
       "time": 0.851
      },
      "score": 58.6,
-     "why": "Rated 4.32/5 by 20,251 cooks; ready in 40 min; light at 574 kcal"
+     "why": "Rated 4.32/5 by 20,252 cooks; ready in 40 min; light at 574 kcal"
     },
     {
      "id": "9515030b-6550-4380-b580-dc491cd5fbb5",
@@ -30098,7 +30098,7 @@
      "fat_g": 26,
      "five_a_day": 2,
      "rating": 4.26,
-     "rating_count": 425,
+     "rating_count": 427,
      "diet": [
       "dairy-free"
      ],
@@ -30111,9 +30111,9 @@
      "dish": "Noodles & stir-fry",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/8039_Salmon-With-Spicy-Sesame-Noodles_003_0-2-1774345427585-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.2408,
+     "bayes_rating": 4.240861244019139,
      "components": {
-      "rating": 0.485,
+      "rating": 0.486,
       "protein": 0.363,
       "calories": 0.733,
       "time": 0.979
@@ -30938,7 +30938,7 @@
      "fat_g": 14,
      "five_a_day": 2,
      "rating": 4.27,
-     "rating_count": 142,
+     "rating_count": 143,
      "diet": [
       "vegetarian"
      ],
@@ -30951,7 +30951,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Creamy-Garlic-Mushroom-Fusilli-1787036140071-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.22906432748538,
+     "bayes_rating": 4.229183673469388,
      "components": {
       "rating": 0.472,
       "protein": 0.221,
@@ -31935,37 +31935,6 @@
      "why": "Ready in 20 min"
     },
     {
-     "id": "e8644357-5f77-45d9-a982-08cc0282f28c",
-     "name": "One Pot Pork & Beef Mince Stroganoff With Rice",
-     "cook_time": 35,
-     "calories": 676,
-     "protein_g": 30,
-     "carbs_g": 62,
-     "fat_g": 35,
-     "five_a_day": 1,
-     "rating": 4.4,
-     "rating_count": 156,
-     "diet": [],
-     "vegan": false,
-     "premium": false,
-     "surcharge_pp": 0.0,
-     "cuisine": "Prepped in 5",
-     "main": "Beef",
-     "style": "Indian",
-     "dish": "Pies, stews & roasts",
-     "image": "https://production-media.gousto.co.uk/cms/mood-image/R-17443-2-One-Pot-Pork--Beef-Mince-Stroganoff-with-Rice-1791555213226-x400.jpg",
-     "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.287640449438203,
-     "components": {
-      "rating": 0.539,
-      "protein": 0.22,
-      "calories": 0.677,
-      "time": 0.872
-     },
-     "score": 54.6,
-     "why": "Rated 4.4/5 by 156 cooks; ready in 35 min"
-    },
-    {
      "id": "446447fe-5ef6-43f3-bb6f-7168348d890e",
      "name": "BBQ Veggie Loaded Pizza With Salad",
      "cook_time": 20,
@@ -32127,6 +32096,37 @@
      },
      "score": 54.2,
      "why": "Ready in 20 min; light at 558 kcal"
+    },
+    {
+     "id": "e8644357-5f77-45d9-a982-08cc0282f28c",
+     "name": "One Pot Pork & Beef Mince Stroganoff With Rice",
+     "cook_time": 35,
+     "calories": 676,
+     "protein_g": 30,
+     "carbs_g": 62,
+     "fat_g": 35,
+     "five_a_day": 1,
+     "rating": 4.38,
+     "rating_count": 159,
+     "diet": [],
+     "vegan": false,
+     "premium": false,
+     "surcharge_pp": 0.0,
+     "cuisine": "Prepped in 5",
+     "main": "Beef",
+     "style": "Indian",
+     "dish": "Pies, stews & roasts",
+     "image": "https://production-media.gousto.co.uk/cms/mood-image/R-17443-2-One-Pot-Pork--Beef-Mince-Stroganoff-with-Rice-1791555213226-x400.jpg",
+     "url": "https://www.gousto.co.uk/menu",
+     "bayes_rating": 4.279721448467967,
+     "components": {
+      "rating": 0.53,
+      "protein": 0.22,
+      "calories": 0.677,
+      "time": 0.872
+     },
+     "score": 54.1,
+     "why": "Rated 4.38/5 by 159 cooks; ready in 35 min"
     },
     {
      "id": "2d9e53de-5a62-4a98-a8cc-655a361f6a3c",
@@ -32369,7 +32369,7 @@
      "fat_g": 21,
      "five_a_day": 1,
      "rating": 4.22,
-     "rating_count": 6842,
+     "rating_count": 6843,
      "diet": [],
      "vegan": false,
      "premium": false,
@@ -32380,7 +32380,7 @@
      "dish": "Pasta & bakes",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/5882_Creamy-Bacon-Alfredo-Sauce-With-Fresh-Tagliatelle-1786694518225-1787913909491-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.219431979551263,
+     "bayes_rating": 4.219432060201618,
      "components": {
       "rating": 0.461,
       "protein": 0.241,
@@ -34875,7 +34875,7 @@
      "fat_g": 11,
      "five_a_day": 2,
      "rating": 3.96,
-     "rating_count": 440,
+     "rating_count": 441,
      "diet": [],
      "vegan": false,
      "premium": true,
@@ -34886,7 +34886,7 @@
      "dish": "Noodles & stir-fry",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Singapore-Noodles-With-Char-Siu-Pork--Prawns2402-1787036311113-1791877827217-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.035,
+     "bayes_rating": 4.034882995319812,
      "components": {
       "rating": 0.248,
       "protein": 0.308,
@@ -34936,8 +34936,8 @@
      "carbs_g": 55,
      "fat_g": 32,
      "five_a_day": 3,
-     "rating": 4.01,
-     "rating_count": 139,
+     "rating": 4.02,
+     "rating_count": 140,
      "diet": [
       "vegetarian"
      ],
@@ -34950,14 +34950,14 @@
      "dish": "Soup & salad",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/13354_RENOURISH-Tomato--Basil-Soup-With-Mozzarella--Pesto-Toastie-1785836598859-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.122094395280236,
+     "bayes_rating": 4.125882352941177,
      "components": {
-      "rating": 0.349,
+      "rating": 0.353,
       "protein": 0.15,
       "calories": 0.726,
       "time": 0.979
      },
-     "score": 46.0,
+     "score": 46.2,
      "why": "Ready in 10 min"
     },
     {
@@ -35259,37 +35259,6 @@
      "why": "Ready in 10 min; light at 575 kcal"
     },
     {
-     "id": "cf93397f-9647-45b6-abf3-3013ed5aca0f",
-     "name": "Beef Dan Dan Udon Noodles",
-     "cook_time": 7,
-     "calories": 414,
-     "protein_g": 15,
-     "carbs_g": 60,
-     "fat_g": 11,
-     "five_a_day": 2,
-     "rating": 3.74,
-     "rating_count": 119,
-     "diet": [],
-     "vegan": false,
-     "premium": true,
-     "surcharge_pp": 1.5,
-     "cuisine": "Heat & Eat",
-     "main": "Beef",
-     "style": "Chinese & East Asian",
-     "dish": "Noodles & stir-fry",
-     "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Beef-Dan-Dan-Udon-Noodles-2553-1787035995575-x400.jpg",
-     "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 4.028401253918495,
-     "components": {
-      "rating": 0.241,
-      "protein": 0.14,
-      "calories": 0.898,
-      "time": 0.991
-     },
-     "score": 43.2,
-     "why": "Ready in 7 min; light at 414 kcal"
-    },
-    {
      "id": "759d4a3d-d576-4928-a761-b39a98a9d3f9",
      "name": "Spicy 'Nduja Spaghetti Carbonara",
      "cook_time": 10,
@@ -35418,6 +35387,37 @@
      "why": "Ready in 20 min; light at 564 kcal"
     },
     {
+     "id": "cf93397f-9647-45b6-abf3-3013ed5aca0f",
+     "name": "Beef Dan Dan Udon Noodles",
+     "cook_time": 7,
+     "calories": 414,
+     "protein_g": 15,
+     "carbs_g": 60,
+     "fat_g": 11,
+     "five_a_day": 2,
+     "rating": 3.72,
+     "rating_count": 120,
+     "diet": [],
+     "vegan": false,
+     "premium": true,
+     "surcharge_pp": 1.5,
+     "cuisine": "Heat & Eat",
+     "main": "Beef",
+     "style": "Chinese & East Asian",
+     "dish": "Noodles & stir-fry",
+     "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Beef-Dan-Dan-Udon-Noodles-2553-1787035995575-x400.jpg",
+     "url": "https://www.gousto.co.uk/menu",
+     "bayes_rating": 4.0200000000000005,
+     "components": {
+      "rating": 0.231,
+      "protein": 0.14,
+      "calories": 0.898,
+      "time": 0.991
+     },
+     "score": 42.7,
+     "why": "Ready in 7 min; light at 414 kcal"
+    },
+    {
      "id": "14967122-e2eb-46df-93b6-14b6de2bcfa2",
      "name": "One Tray Sticky Sweet & Sour Pork Meatball Tray Bake",
      "cook_time": 35,
@@ -35496,7 +35496,7 @@
      "fat_g": 15,
      "five_a_day": 2,
      "rating": 3.8,
-     "rating_count": 840,
+     "rating_count": 841,
      "diet": [],
      "vegan": false,
      "premium": true,
@@ -35507,7 +35507,7 @@
      "dish": "Curry & rice",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Thai-Red-Chicken-Curry-With-Jasmine-Rice2480-1788857804082-1789380842350-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 3.876923076923077,
+     "bayes_rating": 3.8768491834774252,
      "components": {
       "rating": 0.066,
       "protein": 0.435,
@@ -35527,7 +35527,7 @@
      "fat_g": 13,
      "five_a_day": 2,
      "rating": 3.79,
-     "rating_count": 257,
+     "rating_count": 258,
      "diet": [],
      "vegan": false,
      "premium": true,
@@ -35538,9 +35538,9 @@
      "dish": "Curry & rice",
      "image": "https://production-media.gousto.co.uk/cms/mood-image/Heat--Eat-Beef-Brisket-Massaman2580-1787035888176-x400.jpg",
      "url": "https://www.gousto.co.uk/menu",
-     "bayes_rating": 3.9694310722100656,
+     "bayes_rating": 3.969039301310044,
      "components": {
-      "rating": 0.173,
+      "rating": 0.172,
       "protein": 0.162,
       "calories": 0.852,
       "time": 0.991
@@ -40059,7 +40059,7 @@
    "fat_g": 12,
    "five_a_day": 2,
    "rating": 4.21,
-   "rating_count": 110117,
+   "rating_count": 110118,
    "diet": [
     "dairy-free"
    ],
@@ -40072,7 +40072,7 @@
    "dish": "Wraps, tacos & kebabs",
    "image": "https://production-media.gousto.co.uk/cms/mood-image/1417---Shredded-Hoisin-Chicken-Wraps-1790068689365-x400.jpg",
    "url": "https://www.gousto.co.uk/menu",
-   "bayes_rating": 4.209981870427948,
+   "bayes_rating": 4.209981870592287,
    "components": {
     "rating": 0.563,
     "protein": 0.517,
@@ -40080,7 +40080,7 @@
     "time": 0.8
    },
    "score": 61.8,
-   "why": "Rated 4.21/5 by 110,117 cooks; ready in 20 min; light at 535 kcal"
+   "why": "Rated 4.21/5 by 110,118 cooks; ready in 20 min; light at 535 kcal"
   },
   {
    "id": "8f281543-45e4-42d8-90e2-8e7e65e043e3",
@@ -44545,7 +44545,7 @@
    "fat_g": 23,
    "five_a_day": 2,
    "rating": 4.18,
-   "rating_count": 1565,
+   "rating_count": 1566,
    "diet": [
     "dairy-free",
     "vegan",
@@ -44560,7 +44560,7 @@
    "dish": "Curry & rice",
    "image": "https://production-media.gousto.co.uk/cms/mood-image/7799---Hoisin-Tofu--Cashew-Nuts-With-Spinach-Rice-1790067986232-x400.jpg",
    "url": "https://www.gousto.co.uk/menu",
-   "bayes_rating": 4.182266288951841,
+   "bayes_rating": 4.182265005662514,
    "components": {
     "rating": 0.533,
     "protein": 0.31,
@@ -44568,7 +44568,7 @@
     "time": 0.8
    },
    "score": 54.7,
-   "why": "Rated 4.18/5 by 1,565 cooks; ready in 20 min"
+   "why": "Rated 4.18/5 by 1,566 cooks; ready in 20 min"
   },
   {
    "id": "c845d57c-9cf4-4120-bb99-9860bfff13b4",
@@ -45828,7 +45828,7 @@
    "fat_g": 4,
    "five_a_day": 2,
    "rating": 4.08,
-   "rating_count": 13468,
+   "rating_count": 13469,
    "diet": [
     "dairy-free",
     "vegetarian"
@@ -45842,7 +45842,7 @@
    "dish": "Noodles & stir-fry",
    "image": "https://production-media.gousto.co.uk/cms/mood-image/3423_Sticky-Mushroom--Broccoli-Noodle-Stir-Fry-1789999908153-x400.jpg",
    "url": "https://www.gousto.co.uk/menu",
-   "bayes_rating": 4.081755926251097,
+   "bayes_rating": 4.081755797790621,
    "components": {
     "rating": 0.425,
     "protein": 0.221,
@@ -46807,7 +46807,7 @@
    "fat_g": 21,
    "five_a_day": 3,
    "rating": 4.13,
-   "rating_count": 2102,
+   "rating_count": 2103,
    "diet": [
     "dairy-free",
     "vegan",
@@ -46822,7 +46822,7 @@
    "dish": "Pies, stews & roasts",
    "image": "https://production-media.gousto.co.uk/cms/mood-image/3714_Plant-Based-Veg-Crumble-With-Spring-Greens-5459-1631109374686-x400.jpg",
    "url": "https://www.gousto.co.uk/menu",
-   "bayes_rating": 4.136081668114683,
+   "bayes_rating": 4.136079027355623,
    "components": {
     "rating": 0.483,
     "protein": 0.029,
