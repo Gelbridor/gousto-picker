@@ -24,7 +24,40 @@ def usable(r):
 
 
 def eligible(i):
-    return not i["vegan"] and not i["premium"]
+    return not i["vegan"] and not i["premium"] and not i.get("swap_hidden")
+
+
+# ---------- protein swaps: "double" portions and "lean" mince versions of a standard recipe ----------
+MEATS = {"beef", "pork", "chicken", "turkey", "lamb", "basa", "cod", "salmon", "sausage", "haddock", "hake"}
+SWAP_WORDS = {"lean", "double", "mince", "wholewheat", "wholemeal"}
+
+
+def swap_kind(it):
+    w = words(it["name"])
+    if "double" in w and it["premium"]:   # "Double Cheese" etc. aren't protein swaps and aren't premium
+        return "double"
+    return "lean" if "lean" in w else None
+
+
+def mark_swaps(items, sim=0.6):
+    """Hide every double-protein swap. Hide a lean swap when the same week offers the standard recipe with the same
+    meat (Lean Beef Bolognese vs Beef Bolognese); keep it when that's the only way to get that meat
+    (lean beef where the standard is pork & beef or lamb, or there's no standard version at all)."""
+    def core(n):
+        return words(n) - SWAP_WORDS - MEATS
+    standard = [i for i in items if not swap_kind(i) and "vegetarian" not in i["diet"] and not i["vegan"]]
+    for it in items:
+        kind = it["swap"] = swap_kind(it)
+        hidden = kind == "double"
+        if kind == "lean":
+            mine, c = words(it["name"]) & MEATS, core(it["name"])
+            for s in standard:
+                cs = core(s["name"])
+                if c and cs and len(c & cs) / len(c | cs) >= sim and words(s["name"]) & MEATS in (mine, set()):
+                    hidden = True
+                    it["swap_of"] = s["name"]
+                    break
+        it["swap_hidden"] = hidden
 
 
 def simplify(r):
@@ -88,6 +121,7 @@ def menu_items(recipes, cfg):
             "time": round(_percentile(it["cook_time"], ordered["cook_time"], invert=True), 3),
         }
         it["score"] = base_score(it, cfg["weights"])
+    mark_swaps(items, cfg["learning"]["similar"])
     return items
 
 

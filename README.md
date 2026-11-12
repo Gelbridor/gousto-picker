@@ -15,6 +15,8 @@ Fetches this week's Gousto menu, drops vegan and premium-surcharge recipes, rank
 5. **Mix it up (on by default):** at most 2 of one main ingredient, and no near-identical variants, in the top 8.
 
 "Use history" on the Preferences tab scales parts 2 and 3.
+
+Double-protein swaps are hidden. Lean mince swaps are hidden when that week has the standard recipe with the same meat, but kept when they're the only way to get that meat (e.g. lean beef where the standard is pork & beef). Turn this off under Preferences > Limits.
 - `.github/workflows/weekly.yml` – runs every Tuesday and publishes `docs/` to GitHub Pages (no PC needed).
   One-off setup: repo Settings → Pages → Source: **GitHub Actions**.
 
