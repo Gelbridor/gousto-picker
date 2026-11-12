@@ -58,6 +58,7 @@ input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px}
 .dial output{text-align:right;font-variant-numeric:tabular-nums;color:var(--mute)}
 input[type=range]{width:100%;accent-color:var(--accent);min-width:0}
 .limits{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:8px;align-items:center;margin-top:12px}
 .limits label{display:flex;flex-direction:column;gap:4px;font-size:.84rem;color:var(--mute)}
 select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .aff{display:flex;flex-direction:column;gap:5px}
@@ -200,6 +201,8 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
         <label>Longest cook time<select id="maxTime"></select></label>
         <label>Most calories<select id="maxKcal"></select></label>
       </div>
+      <label class="check"><input type="checkbox" id="hideSwaps"> Hide double-protein and lean mince swaps</label>
+      <p>Lean versions stay when they're the only way to get that meat, for example lean beef where the standard recipe uses pork &amp; beef.</p>
     </div>
     <div class="group">
       <h2>Main ingredient</h2>
@@ -336,13 +339,13 @@ function avoidHit(i) {
 function defaults() {
   const w = data.config.weights;
   return { v: 2, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [], variety: true };
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [], variety: true, hideSwaps: true };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
   // v2 changed how the dials are scaled, so dial positions saved before then start again from the new defaults
-  return { v: 2, w: { ...d.w, ...((saved.v >= 2 && saved.w) || {}) }, variety: saved.variety == null ? true : !!saved.variety, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
+  return { v: 2, w: { ...d.w, ...((saved.v >= 2 && saved.w) || {}) }, variety: saved.variety == null ? true : !!saved.variety, hideSwaps: saved.hideSwaps == null ? true : !!saved.hideSwaps, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
            protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, avoid: Array.isArray(saved.avoid) ? saved.avoid : [],
            learn: saved.learn == null ? 100 : +saved.learn,
            picks: Array.isArray(saved.picks) ? saved.picks : [] };
@@ -355,14 +358,15 @@ function score(i) {
   const pl = prefs.protein[i.main] || 0, cl = prefs.cuisine[i.style] || 0, dl = prefs.dish[i.dish] || 0;
   const avoided = avoidHit(i);
   const ve = voteEffect(i.name);
-  const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided || ve.hide;
+  const swap = prefs.hideSwaps && !!i.swap_hidden;
+  const hidden = pl === -2 || cl === -2 || dl === -2 || !!avoided || ve.hide || swap;
   const pb = profile.bonus || {}, cap = L().tag_cap;
   const hist = ((pb.main||{})[i.main]||0) + ((pb.style||{})[i.style]||0) + ((pb.dish||{})[i.dish]||0);
   const vbs = (voteBonus.main[i.main]||0) + (voteBonus.style[i.style]||0) + (voteBonus.dish[i.dish]||0);
   const lb = Math.max(-cap, Math.min(cap, hist + vbs)) * (prefs.learn / 100);   // one cap so three related tags can't triple-count
   const rb = repeatBonus(i.name) * (prefs.learn / 100);
   const adj = (BONUS[pl] || 0) + (BONUS[cl] || 0) + (BONUS[dl] || 0) + lb + rb + ve.pts;
-  return { s: base + adj, parts, pl, cl, dl, lb, rb, ve, hidden, avoided };
+  return { s: base + adj, parts, pl, cl, dl, lb, rb, ve, hidden, avoided, swap };
 }
 
 function why(i, r) {
@@ -390,9 +394,11 @@ function renderPicks() {
   if (prefs.variety && !terms.length) items = vary(items);
   const n = items.length;
   // thumbs-down recipes are hidden, but listed at the bottom of the whole menu so a vote can be undone
-  const downed = scored.filter(x => x.r.ve.hide && !(x.r.hidden && (x.r.pl === -2 || x.r.cl === -2 || x.r.dl === -2 || x.r.avoided)) && fits(x));
+  const downed = scored.filter(x => x.r.ve.hide && !(x.r.hidden && (x.r.pl === -2 || x.r.cl === -2 || x.r.dl === -2 || x.r.avoided || x.r.swap)) && fits(x));
   const off = terms.length ? data.weeks[wk].all.filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
-  const offNote = off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "";
+  const swaps = terms.length && prefs.hideSwaps ? data.weeks[wk].all.filter(i => matches(i) && i.swap_hidden && (v || !i.vegan) && (p || !i.premium)).length : 0;
+  const offNote = (off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "")
+    + (swaps ? ` ${swaps} double-protein or lean swap${swaps === 1 ? " is" : "s are"} hidden (Preferences, Limits).` : "");
   if (!whole && !terms.length) items = items.slice(0, data.config.top_n);
   else items = [...items, ...downed];
   $("list").innerHTML = items.length ? items.map(({i, r}, k) => {
@@ -456,6 +462,7 @@ function renderPrefs() {
   renderAvoid();
   renderPickList();
   $("variety").checked = prefs.variety !== false;
+  $("hideSwaps").checked = prefs.hideSwaps !== false;
   $("learn").value = prefs.learn; $("learn").nextElementSibling.textContent = prefs.learn + "%";
   const P = profile;
   const fmtB = t => `${t.value} (${t.bonus > 0 ? "+" : ""}${Math.round(t.bonus * prefs.learn / 100)})`;
@@ -555,6 +562,7 @@ function wire() {
   $("maxKcal").onchange = e => { prefs.maxKcal = +e.target.value; changed(); };
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
   $("variety").onchange = e => { prefs.variety = e.target.checked; changed(); };
+  $("hideSwaps").onchange = e => { prefs.hideSwaps = e.target.checked; changed(); };
   $("search").oninput = renderPicks;
   $("reset").onclick = () => { const keep = prefs.picks; prefs = defaults(); prefs.picks = keep; renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {
