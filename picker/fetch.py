@@ -4,7 +4,10 @@ Primary: the JSON feed the menu page itself calls (production-api.gousto.co.uk/m
 Fallback: drive the real page with Playwright and capture that same response.
 """
 import json
+import threading
+import time
 import urllib.request
+import uuid
 from datetime import datetime, timedelta
 
 API = "https://production-api.gousto.co.uk"
@@ -21,8 +24,15 @@ MENU_QS = (
 )
 
 
-def _get(url):
-    req = urllib.request.Request(url, headers=HEADERS)
+# Gousto A/B tests its menu: the same week can have several versions, and which one you get depends on your
+# visitor (device) ID - a visitor stays in the same group week after week. These fixed IDs are enough to find
+# every version (with 8 IDs the chance of missing one of two equal groups is under 1%).
+VERSION_DEVICES = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"gousto-picker/visitor/{n}")) for n in range(8)]
+
+
+def _get(url, device=None):
+    headers = {**HEADERS, "x-gousto-device-id": device} if device else HEADERS
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=40) as r:
         return json.load(r)
 
@@ -37,9 +47,36 @@ def fetch_via_api(weeks=3):
     return [_get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=_delivery_date(p))) for p in periods]
 
 
-def fetch_menu_for(delivery_date):
+def fetch_menu_for(delivery_date, device=None):
     """The menu that was (or will be) delivered on this date, e.g. a past week's menu for learning."""
-    return _get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=delivery_date))
+    return _get(f"{API}/menu/v3/menus?" + MENU_QS.format(date=delivery_date), device)
+
+
+def upcoming_dates(weeks=3):
+    periods = sorted(_get(f"{API}/menu/v1/active-periods")["data"], key=lambda p: p["offset"])[:weeks]
+    return [_delivery_date(p) for p in periods]
+
+
+def fetch_versions(dates, devices=VERSION_DEVICES, budget=150):
+    """{date: {device: menu}} for every date as seen by every test visitor. Daemon threads with one overall time
+    limit, so a stuck request can't hold up the build; anything not back in time is simply missing."""
+    out = {d: {} for d in dates}
+
+    def get(d, dev):
+        try:
+            out[d][dev] = fetch_menu_for(d, dev)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Menu {d} for test visitor {dev[:8]} failed: {exc}", flush=True)
+
+    threads = [threading.Thread(target=get, args=(d, dev), daemon=True) for d in dates for dev in devices]
+    for n, t in enumerate(threads):
+        t.start()
+        if n % 8 == 7:
+            time.sleep(0.5)   # be gentle: at most ~16 requests a second
+    deadline = time.monotonic() + budget
+    for t in threads:
+        t.join(max(0, deadline - time.monotonic()))
+    return {d: dict(v) for d, v in out.items()}
 
 
 def fetch_via_playwright(weeks=3):
