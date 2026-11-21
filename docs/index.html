@@ -173,6 +173,11 @@ textarea#voteOut_unused{width:100%;min-height:90px;font:inherit;font-size:.8rem;
         <div class="btnrow"><button class="ghost" id="copyLink">Copy link</button><button class="ghost" id="syncNow">Sync now</button><button class="ghost" id="syncOff">Disconnect</button></div>
       </div>
     </div>
+    <div class="group" id="versionBox" hidden>
+      <h2>Your Gousto menu</h2>
+      <p id="versionText"></p>
+      <div class="limits"><label>Menu version<select id="menuVersion"></select></label></div>
+    </div>
     <div class="group">
       <h2>What matters</h2>
       <p>Drag up for more weight. Scores are recalculated instantly.</p>
@@ -268,6 +273,23 @@ function shares(items) {
   const out = {}; DIMS.forEach(d => { const c = {}; items.forEach(i => { const v = i[d] || "Other"; c[v] = (c[v] || 0) + 1; }); out[d] = {}; Object.entries(c).forEach(([v, n]) => out[d][v] = n / (items.length || 1)); });
   return out;
 }
+/* ---------- menu versions: Gousto A/B tests its menu, each customer sees one version ---------- */
+function myVersion() {
+  const mv = data.menu_versions; if (!mv || !mv.labels) return null;
+  if (prefs && prefs.menuVersion && mv.labels.includes(prefs.menuVersion)) return prefs.menuVersion;
+  return autoVersion();
+}
+function autoVersion() {   // the build's guess from picks.json, plus picks entered here of recipes only some versions have
+  const mv = data.menu_versions, score = { ...mv.match };
+  ((prefs && prefs.picks) || []).forEach(x => {
+    const w = data.weeks.find(w => w.period.when_start.slice(0, 10) === x.w), i = w && w.all.find(i => i.name === x.n);
+    if (i && i.menus) i.menus.forEach(l => score[l] = (score[l] || 0) + 1);
+  });
+  return mv.labels.slice().sort((a, b) => (score[b] || 0) - (score[a] || 0) || (b === mv.mine) - (a === mv.mine))[0];
+}
+const onMyMenu = i => { const v = myVersion(); return !v || !i.menus || i.menus.includes(v); };
+const menuOf = w => w.all.filter(onMyMenu);
+
 function computeProfile() {   // how much more often you pick a tag than the menu you picked from offered it
   const base = data.profile || { n: 0 }, lc = L();
   const fromFile = data.history || [];
@@ -277,9 +299,9 @@ function computeProfile() {   // how much more often you pick a tag than the men
   const n = (base.n || 0) + user.length;
   if (!n) { profile = { n: 0, base: 0, user: 0, bonus: { main: {}, style: {}, dish: {} }, top: [] }; return; }
   const seen = new Set(), pool = [];
-  data.weeks.forEach(w => w.all.forEach(i => { if (!i.vegan && !i.premium && !seen.has(i.name)) { seen.add(i.name); pool.push(i); } }));
+  data.weeks.forEach(w => menuOf(w).forEach(i => { if (!i.vegan && !i.premium && !seen.has(i.name)) { seen.add(i.name); pool.push(i); } }));
   const pooled = shares(pool);
-  const weekShares = {}; data.weeks.forEach(w => { weekShares[w.period.when_start.slice(0, 10)] = shares(w.all.filter(i => !i.vegan && !i.premium)); });
+  const weekShares = {}; data.weeks.forEach(w => { weekShares[w.period.when_start.slice(0, 10)] = shares(menuOf(w).filter(i => !i.vegan && !i.premium)); });
   const bonus = {}, top = [];
   DIMS.forEach(d => {
     const obs = { ...((base.obs || base.picked || {})[d] || {}) };
@@ -339,13 +361,13 @@ function avoidHit(i) {
 function defaults() {
   const w = data.config.weights;
   return { v: 2, w: { rating: w.rating*100, protein: w.protein*100, calories: w.calories*100, time: w.time*100, veg: 0 },
-           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [], variety: true, hideSwaps: true };
+           maxTime: 0, maxKcal: 0, protein: {}, cuisine: {}, dish: {}, avoid: [], learn: 100, picks: [], variety: true, hideSwaps: true, menuVersion: "" };
 }
 function merge(saved) {
   const d = defaults();
   if (!saved || typeof saved !== "object") return d;
   // v2 changed how the dials are scaled, so dial positions saved before then start again from the new defaults
-  return { v: 2, w: { ...d.w, ...((saved.v >= 2 && saved.w) || {}) }, variety: saved.variety == null ? true : !!saved.variety, hideSwaps: saved.hideSwaps == null ? true : !!saved.hideSwaps, maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
+  return { v: 2, w: { ...d.w, ...((saved.v >= 2 && saved.w) || {}) }, variety: saved.variety == null ? true : !!saved.variety, hideSwaps: saved.hideSwaps == null ? true : !!saved.hideSwaps, menuVersion: typeof saved.menuVersion === "string" ? saved.menuVersion : "", maxTime: +saved.maxTime||0, maxKcal: +saved.maxKcal||0,
            protein: saved.protein||{}, cuisine: saved.cuisine||{}, dish: saved.dish||{}, avoid: Array.isArray(saved.avoid) ? saved.avoid : [],
            learn: saved.learn == null ? 100 : +saved.learn,
            picks: Array.isArray(saved.picks) ? saved.picks : [] };
@@ -389,14 +411,14 @@ function renderPicks() {
     return terms.every(t => hay.includes(t));
   })();
   const fits = ({i}) => (!prefs.maxTime || i.cook_time <= prefs.maxTime) && (!prefs.maxKcal || i.calories <= prefs.maxKcal);
-  const scored = data.weeks[wk].all.filter(i => (v || !i.vegan) && (p || !i.premium) && matches(i)).map(i => ({ i, r: score(i) }));
+  const scored = menuOf(data.weeks[wk]).filter(i => (v || !i.vegan) && (p || !i.premium) && matches(i)).map(i => ({ i, r: score(i) }));
   let items = scored.filter(x => !x.r.hidden && fits(x)).sort((a,b) => b.r.s - a.r.s);
   if (prefs.variety && !terms.length) items = vary(items);
   const n = items.length;
   // thumbs-down recipes are hidden, but listed at the bottom of the whole menu so a vote can be undone
   const downed = scored.filter(x => x.r.ve.hide && !(x.r.hidden && (x.r.pl === -2 || x.r.cl === -2 || x.r.dl === -2 || x.r.avoided || x.r.swap)) && fits(x));
-  const off = terms.length ? data.weeks[wk].all.filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
-  const swaps = terms.length && prefs.hideSwaps ? data.weeks[wk].all.filter(i => matches(i) && i.swap_hidden && (v || !i.vegan) && (p || !i.premium)).length : 0;
+  const off = terms.length ? menuOf(data.weeks[wk]).filter(i => matches(i) && ((i.vegan && !v) || (i.premium && !p)) && !score(i).hidden).length : 0;
+  const swaps = terms.length && prefs.hideSwaps ? menuOf(data.weeks[wk]).filter(i => matches(i) && i.swap_hidden && (v || !i.vegan) && (p || !i.premium)).length : 0;
   const offNote = (off ? ` ${off} more match${off === 1 ? "es" : ""} if you include vegan or premium recipes.` : "")
     + (swaps ? ` ${swaps} double-protein or lean swap${swaps === 1 ? " is" : "s are"} hidden (Preferences, Limits).` : "");
   if (!whole && !terms.length) items = items.slice(0, data.config.top_n);
@@ -442,7 +464,7 @@ function seg(group, name, count) {
 function renderAvoid() {
   $("avoidList").innerHTML = prefs.avoid.length ? prefs.avoid.map(t => `<button class="pill" data-remove="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} <span aria-hidden="true">×</span></button>`).join("") : '<span class="hint">Nothing avoided yet.</span>';
   $("avoidQuick").innerHTML = QUICK_AVOID.filter(t => !prefs.avoid.includes(t)).map(t => `<button class="pill add" data-add="${esc(t)}">+ ${esc(t)}</button>`).join("");
-  const all = data.weeks[wk].all, hit = all.filter(i => avoidHit(i)).length, unknown = prefs.avoid.length ? all.filter(i => !ingredientsOf(i)).length : 0;
+  const all = menuOf(data.weeks[wk]), hit = all.filter(i => avoidHit(i)).length, unknown = prefs.avoid.length ? all.filter(i => !ingredientsOf(i)).length : 0;
   $("avoidNote").textContent = !ing ? "Ingredient lists are not loaded, so only recipe names are checked."
     : prefs.avoid.length ? `${hit} of this week's ${all.length} recipes are hidden.${unknown ? ` ${unknown} recipes have no ingredient list yet and are only checked by name.` : ""}` : "Matches whole words at the start, so egg also hides eggs and egg noodles.";
 }
@@ -452,10 +474,26 @@ function renderPickList() {
   $("pickCount").textContent = list.length;
   $("pickList").innerHTML = list.length ? list.slice(0, 40).map(x => `<div class="pk"><span>${esc(x.n)}<small>Week of ${fmt(x.w)}</small></span><button class="ghost" data-unpick="${x.k}" aria-label="Remove ${esc(x.n)}">Remove</button></div>`).join("") : '<span class="hint">No picks entered here yet. Tap "I\'m picking this" on a recipe.</span>';
 }
+function renderVersion() {
+  const mv = data.menu_versions;
+  $("versionBox").hidden = !(mv && mv.labels);
+  if (!mv || !mv.labels) return;
+  const auto = autoVersion(), cur = myVersion(), others = mv.labels.filter(l => l !== cur);
+  $("menuVersion").innerHTML = [["", `Automatic (version ${auto})`], ...mv.labels.map(l => [l, `Version ${l}`])]
+    .map(([v, t]) => `<option value="${v}" ${(prefs.menuVersion || "") === v ? "selected" : ""}>${t}</option>`).join("");
+  const only = l => data.weeks[wk].all.filter(i => i.menus && i.menus.length === 1 && i.menus[0] === l && !i.vegan && !i.premium).slice(0, 2).map(i => i.name);
+  const ex = mv.labels.map(l => only(l).length ? `version ${l} has ${only(l).join(" and ")}` : "").filter(Boolean);
+  const m = mv.match || {};
+  $("versionText").textContent = `Gousto is testing ${mv.labels.length} versions of its menu, and each customer only sees one. `
+    + (prefs.menuVersion ? `You've chosen version ${cur}. ` : `Yours looks like version ${cur}` + (mv.checked ? ` (${m[cur] || 0} of your recent picks were on it, ${others.map(l => (m[l] || 0) + " on " + l).join(", ")}). ` : ". "))
+    + (ex.length ? `For this week, ${ex.join("; ")}. ` : "")
+    + "If the list doesn't match your Gousto app, choose the other version.";
+}
 function renderPrefs() {
+  renderVersion();
   $("dials").innerHTML = DIALS.map(([k,l]) => `<div class="dial"><label for="d-${k}">${l}</label>
     <input type="range" id="d-${k}" min="0" max="100" step="5" value="${prefs.w[k]}" data-k="${k}"><output>${Math.round(prefs.w[k])}</output></div>`).join("");
-  const counts = (key) => { const c = {}; data.weeks[wk].all.forEach(i => { const v = i[key] || "Other"; c[v] = (c[v]||0)+1; }); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
+  const counts = (key) => { const c = {}; menuOf(data.weeks[wk]).forEach(i => { const v = i[key] || "Other"; c[v] = (c[v]||0)+1; }); return Object.entries(c).sort((a,b)=>b[1]-a[1]); };
   $("proteins").innerHTML = counts("main").map(([n,c]) => seg("protein", n, c)).join("");
   $("cuisines").innerHTML = counts("style").map(([n,c]) => seg("cuisine", n, c)).join("");
   $("dishes").innerHTML = counts("dish").map(([n,c]) => seg("dish", n, c)).join("");
@@ -563,6 +601,7 @@ function wire() {
   ["vegan","premium","whole"].forEach(id => $(id).onchange = renderPicks);
   $("variety").onchange = e => { prefs.variety = e.target.checked; changed(); };
   $("hideSwaps").onchange = e => { prefs.hideSwaps = e.target.checked; changed(); };
+  $("menuVersion").onchange = e => { prefs.menuVersion = e.target.value; computeProfile(); renderPrefs(); changed(); };
   $("search").oninput = renderPicks;
   $("reset").onclick = () => { const keep = prefs.picks; prefs = defaults(); prefs.picks = keep; renderPrefs(); changed(); };
   [["tab-picks","picks","tab-prefs","prefs"],["tab-prefs","prefs","tab-picks","picks"]].forEach(([a,pa,b,pb]) => $(a).onclick = () => {

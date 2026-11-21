@@ -6,6 +6,10 @@ Fetches this week's Gousto menu, drops vegan and premium-surcharge recipes, rank
 - `config.json` – ranking weights (rating / protein / calories / time) and learning settings. The page also has sliders.
 - `python tools/backtest.py [--sweep]` – re-scores each past week's real menu using only the picks made before it and reports where your actual picks landed. Run it after changing `config.json` or the scoring.
 
+## Menu versions
+
+Gousto A/B tests its menu: in the same week, different customers can see different versions (in Nov 2026 two versions differed by about 40 recipes). Which one you get depends on your account and stays the same from week to week. The build fetches the menu as 8 fixed test visitors, groups them into versions, and picks yours by checking which version your past picks were on. The page shows only your version; Preferences > Your Gousto menu shows the guess and lets you switch if it ever doesn't match the Gousto app. Picks entered on the site also count towards the guess.
+
 ## How recipes are scored
 
 1. **Base score (0–100):** a weighted mix of Bayesian rating, protein, calories and cook time. Each part is a percentile against that week's eligible recipes, so one extreme recipe can't squash the rest.

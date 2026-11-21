@@ -15,24 +15,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from picker.fetch import fetch_menu_for  # noqa: E402
+from picker.fetch import fetch_menu_for, fetch_versions  # noqa: E402
+from picker.versions import choose, group  # noqa: E402
 from picker.profile import learn, load_history  # noqa: E402
 from picker.rank import eligible, key, load_config, menu_items, personalise  # noqa: E402
 
 CACHE = ROOT / ".cache" / "menus"
 
 
-def menu(week):
+def menu(week, device=None):
     CACHE.mkdir(parents=True, exist_ok=True)
-    f = CACHE / f"{week}.json"
+    f = CACHE / f"{week}{'-' + device[:8] if device else ''}.json"
     if not f.exists():
-        f.write_text(json.dumps(fetch_menu_for(week)))
+        f.write_text(json.dumps(fetch_menu_for(week, device)))
     return json.loads(f.read_text())
+
+
+def your_device(history):
+    """Gousto A/B tests its menu; score each week against the version your picks came from."""
+    versions = group(fetch_versions(sorted({h["week"] for h in history})[-6:]))
+    if not versions:
+        return None
+    info = choose(versions, history)
+    print(f"Menu versions: {info['labels']}, yours looks like {info['mine']} (picks matched {info['match']})")
+    return next(v for v in versions if v["label"] == info["mine"])["devices"][0]
 
 
 def evaluate(cfg, history, raw, variety=True):
     weeks = sorted({h["week"] for h in history})
-    all_items = {w: menu_items(list(raw[w]["recipes"].values()), cfg) for w in weeks}
+    # past menus mark recipes that later sold out as unavailable; they were on offer when you picked
+    all_items = {w: menu_items([{**r, "is_available": True} for r in raw[w]["recipes"].values()], cfg) for w in weeks}
     menus = {w: [i for i in all_items[w] if eligible(i)] for w in weeks}
     ranks, missing = [], []
     for w in weeks:
@@ -96,7 +108,8 @@ def summary(ranks, n):
 def main():
     cfg = load_config()
     history = load_history()
-    raw = {w: menu(w) for w in sorted({h["week"] for h in history})}
+    device = your_device(history)
+    raw = {w: menu(w, device) for w in sorted({h["week"] for h in history})}
     ranks, missing = evaluate(cfg, history, raw)
     for w, k, total, name in ranks:
         print(f"{w}  #{k:>3} of {total}  {name}")
