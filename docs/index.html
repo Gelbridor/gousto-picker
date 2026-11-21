@@ -664,7 +664,10 @@ async function start() {
   if (!data.weeks) data.weeks = [{ period: data.period, all: data.all }];
   try { const r = await fetch("data/ingredients.json", { cache: "no-cache" }); if (r.ok) ing = await r.json(); } catch (e) {}
   if (ing) $("avoidNames").innerHTML = ing.common.map(n => `<option value="${esc(n)}">`).join("");
-  $("week").innerHTML = data.weeks.map((w, i) => `<option value="${i}">${i ? "" : "This week · "}${fmt(w.period.when_start)} to ${fmt(w.period.when_cutoff)}</option>`).join("");
+  // Gousto's "period" is the ordering window (Tue noon to Tue noon). Boxes from that menu arrive Sat after it opens
+  // to Fri after it closes, e.g. ordering 24 Nov to 1 Dec = deliveries 28 Nov to 4 Dec.
+  const plusDays = (iso, n) => new Date(Date.parse(iso.slice(0, 10)) + n * 864e5).toISOString();
+  $("week").innerHTML = data.weeks.map((w, i) => `<option value="${i}">Delivery ${fmt(plusDays(w.period.when_start, 4))} to ${fmt(plusDays(w.period.when_cutoff, 3))}</option>`).join("");
   $("week").onchange = e => { wk = +e.target.value; renderPrefs(); renderPicks(); };
   let local = null;
   try { local = JSON.parse(localStorage.getItem("gousto-prefs")); voteSets.local = JSON.parse(localStorage.getItem("gousto-votes")) || {}; } catch (e) {}
